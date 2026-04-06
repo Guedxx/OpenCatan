@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Catan Board Game</title>
+    <!-- Tailwind CSS for UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Roboto:wght@400;700&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Roboto', sans-serif;
+            user-select: none;
+        }
+
+        .font-game {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Player Tag Shapes */
+        .player-tag {
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
+        }
+
+        .btn-side {
+            background: linear-gradient(180deg, #ffca28, #f57f17);
+            border: 2px solid #5d4037;
+            box-shadow: 0 4px 0 #5d4037;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-side:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #5d4037;
+        }
+
+        /* Custom Scrollbar for hidden elements */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="w-screen h-screen relative">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 w-full h-full"></div>
+
+    <!-- UI Overlay (pointer-events-none allows dragging the 3D canvas behind it) -->
+    <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4">
+        
+        <!-- Top Players Bar -->
+        <div class="flex justify-center items-start space-x-2 w-full mt-2 pointer-events-auto">
+            
+            <!-- Red Player (Mia) -->
+            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-red-800 w-64 shadow-lg shadow-black/50">
+                <div class="absolute -top-3 -left-3 bg-red-700 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
+                <div class="flex h-full bg-[#c83134] rounded">
+                    <!-- Avatar -->
+                    <div class="w-16 bg-[#a72323] rounded-l flex items-center justify-center overflow-hidden border-r-2 border-[#811818]">
+                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=a72323" alt="Mia" class="w-14 h-14 object-cover">
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 flex flex-col justify-between p-1">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-white font-bold text-sm">Mia</span>
+                            <span class="text-white">👤</span>
+                        </div>
+                        <div class="bg-[#811818] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
+                            <div class="flex items-center"><span class="mr-1">🏆</span> 5</div>
+                            <div class="flex items-center"><span class="mr-1">🛡️</span> 2</div>
+                            <div class="ml-auto w-5 h-5 bg-black/40 rounded flex items-center justify-center">🔄</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Cards overlay -->
+                <div class="absolute -bottom-4 -left-2 flex rotate-[-10deg]">
+                    <div class="w-6 h-8 bg-white border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-red-700">4</div>
+                    <div class="w-6 h-8 bg-red-700 border border-gray-400 rounded-sm shadow -ml-3 text-[10px] text-center leading-8 font-bold text-white">0</div>
+                </div>
+            </div>
+
+            <!-- Blue Player (Nassir) -->
+            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-blue-900 w-56 shadow-lg shadow-black/50">
+                <div class="absolute -top-3 -left-3 bg-blue-800 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
+                <div class="flex h-full bg-[#1a6b9c] rounded">
+                    <div class="flex-1 flex flex-col justify-between p-1">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-white font-bold text-sm">Nassir</span>
+                            <span class="text-white">👤</span>
+                        </div>
+                        <div class="bg-[#124d73] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
+                            <div class="flex items-center"><span class="mr-1">🏆</span> 3</div>
+                            <div class="flex items-center"><span class="mr-1">🛡️</span> 1</div>
+                        </div>
+                    </div>
+                    <div class="w-14 bg-[#124d73] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#0c3652]">
+                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Nassir&backgroundColor=124d73" alt="Nassir" class="w-12 h-12">
+                    </div>
+                </div>
+                <div class="absolute -bottom-4 left-2 flex rotate-[5deg]">
+                    <div class="w-6 h-8 bg-blue-500 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">10</div>
+                    <div class="w-6 h-8 bg-blue-800 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
+                </div>
+            </div>
+
+            <!-- Center Logs/Roads gap -->
+            <div class="w-24 h-12 flex flex-col justify-center items-center space-y-1">
+                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
+                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
+                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
+            </div>
+
+            <!-- Orange Player (Jean) -->
+            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-orange-700 w-56 shadow-lg shadow-black/50">
+                <div class="absolute -top-3 -left-3 bg-orange-600 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
+                <div class="flex h-full bg-[#d67a1c] rounded">
+                    <div class="flex-1 flex flex-col justify-between p-1">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-white font-bold text-sm">Jean</span>
+                            <span class="text-white">👤</span>
+                        </div>
+                        <div class="bg-[#a85e13] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
+                            <div class="flex items-center"><span class="mr-1">🏆</span> 2</div>
+                            <div class="flex items-center"><span class="mr-1">🛡️</span> 0</div>
+                        </div>
+                    </div>
+                    <div class="w-14 bg-[#a85e13] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#7a430d]">
+                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Jean&backgroundColor=a85e13" alt="Jean" class="w-12 h-12">
+                    </div>
+                </div>
+                <div class="absolute -bottom-4 left-6 flex rotate-[-5deg]">
+                    <div class="w-6 h-8 bg-orange-400 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">9</div>
+                    <div class="w-6 h-8 bg-orange-700 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
+                </div>
+            </div>
+
+            <!-- Purple Player (Candamir) -->
+            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-purple-900 w-56 shadow-lg shadow-black/50">
+                <div class="absolute -top-3 -left-3 bg-purple-800 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">8</div>
+                <div class="flex h-full bg-[#8a217c] rounded">
+                    <div class="flex-1 flex flex-col justify-between p-1">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-white font-bold text-sm">Candamir</span>
+                            <span class="text-white">👤</span>
+                        </div>
+                        <div class="bg-[#5a1551] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
+                            <div class="flex items-center"><span class="mr-1">🏆</span> 8</div>
+                            <div class="flex items-center"><span class="mr-1">🛡️</span> 0</div>
+                        </div>
+                    </div>
+                    <div class="w-14 bg-[#5a1551] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#360c30]">
+                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Candamir&backgroundColor=5a1551" alt="Candamir" class="w-12 h-12">
+                    </div>
+                </div>
+                <div class="absolute -bottom-4 left-4 flex rotate-[10deg]">
+                    <div class="w-6 h-8 bg-purple-500 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">6</div>
+                    <div class="w-6 h-8 bg-purple-900 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Middle Area (Side Buttons) -->
+        <div class="flex-1 flex justify-between items-end pb-16 pointer-events-none">
+            
+            <!-- Left Side Action Buttons -->
+            <div class="flex flex-col space-y-2 pointer-events-auto">
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">💬</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">🙂</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">🤝</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">📊</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">ℹ️</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">📖</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">⚙️</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">❌</button>
+            </div>
+
+            <!-- Right Side Bottom Buttons -->
+            <div class="flex space-x-3 pointer-events-auto">
+                <button class="btn-side w-14 h-14 rounded-xl flex items-center justify-center p-1">
+                    <div class="grid grid-cols-2 gap-1 w-full h-full bg-white rounded p-1">
+                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
+                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
+                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
+                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
+                    </div>
+                </button>
+                <button class="btn-side w-16 h-14 rounded-xl flex items-center justify-center bg-gradient-to-b from-yellow-400 to-orange-500">
+                    <span class="text-3xl font-bold text-[#5d4037]">↻</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Resource Bar -->
+        <div class="flex justify-center w-full pb-2 pointer-events-auto">
+            <div class="bg-black/90 border-2 border-red-800 shadow-[0_0_15px_rgba(200,49,52,0.6)] rounded-full px-6 py-2 flex items-center space-x-6">
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-[#3b5e2b] rounded-sm border border-black shadow"></div>
+                    <span class="text-white font-bold text-sm">0</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-[#bd5a36] rounded-sm border border-black shadow"></div>
+                    <span class="text-white font-bold text-sm">0</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-[#8ebd3f] rounded-sm border border-black shadow"></div>
+                    <span class="text-white font-bold text-sm">1</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-yellow-400 text-xl leading-none">🏆</span>
+                    <span class="text-white font-bold text-sm">3</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-[#82858c] rounded-sm border border-black shadow"></div>
+                    <span class="text-white font-bold text-sm">0</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- THREE.JS SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#87ceeb'); // Sunny sky background
+        scene.fog = new THREE.FogExp2('#87ceeb', 0.0025); // Horizon fog
+        
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Position camera to mimic the reference image (angled slightly down)
+        camera.position.set(0, 55, 65);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.2; // Don't go below the table
+        controls.minDistance = 30;
+        controls.maxDistance = 150;
+        controls.target.set(0, 0, 0);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 0.9);
+        dirLight.position.set(30, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -40;
+        dirLight.shadow.camera.right = 40;
+        dirLight.shadow.camera.top = 40;
+        dirLight.shadow.camera.bottom = -40;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0xddeeff, 0.3);
+        fillLight.position.set(-30, 20, -20);
+        scene.add(fillLight);
+
+        // --- MATERIALS & TEXTURES ---
+        // Hexagon Colors (rich, toy-like palette)
+        const colors = {
+            wood: '#3b5e2b',
+            sheep: '#8ebd3f',
+            wheat: '#f0c24f',
+            brick: '#bd5a36',
+            ore: '#82858c',
+            desert: '#d6c596',
+            ocean: '#408ab5',
+            port: '#5c4033'
+        };
+
+        const materials = {};
+        for (const [key, hex] of Object.entries(colors)) {
+            materials[key] = new THREE.MeshStandardMaterial({
+                color: hex,
+                roughness: key === 'ocean' ? 0.3 : 0.8,
+                metalness: key === 'ocean' ? 0.1 : 0.0,
+                flatShading: true // Gives a slightly faceted, clean look
+            });
+        }
+
+        // --- OCEAN SIMULATION ---
+        const oceanGeo = new THREE.PlaneGeometry(800, 800, 60, 60);
+        oceanGeo.rotateX(-Math.PI / 2); // Rotate to lay flat
+
+        const oceanMat = new THREE.MeshStandardMaterial({ 
+            color: '#0a6c9c', 
+            roughness: 0.1, 
+            metalness: 0.4,
+            flatShading: true,
+            transparent: true,
+            opacity: 0.85
+        });
+        const oceanPlane = new THREE.Mesh(oceanGeo, oceanMat);
+        oceanPlane.position.y = -1.0; // Level so waves lap against the hex bases
+        oceanPlane.receiveShadow = true;
+        scene.add(oceanPlane);
+
+        // Save original vertices for wave math
+        const basePositions = [];
+        const positions = oceanPlane.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            basePositions.push({
+                x: positions.getX(i),
+                y: positions.getY(i),
+                z: positions.getZ(i)
+            });
+        }
+
+        // --- HEXAGON MATH ---
+        const hexSize = 7;
+        const hexHeight = 1.8;
+        const hexGap = 1.02; // Slight spacing
+
+        // Calculate Pixel coordinates for Pointy-Topped Hexagons
+        function getHexPixelPos(q, r) {
+            const x = hexSize * hexGap * Math.sqrt(3) * (q + r / 2);
+            const z = hexSize * hexGap * 3 / 2 * r;
+            return { x, z };
+        }
+
+        // --- TOKEN TEXTURE GENERATOR ---
+        function createTokenTexture(number) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            // Background circle
+            ctx.fillStyle = '#fdfbf7';
+            ctx.beginPath();
+            ctx.arc(64, 64, 60, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Border
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#222';
+            ctx.stroke();
+
+            // Text
+            const isRed = number === 6 || number === 8;
+            ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
+            ctx.font = 'bold 54px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(number.toString(), 64, 60);
+
+            // Probability Dots
+            let dots = number <= 7 ? number - 1 : 13 - number;
+            ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
+            const dotSize = 3;
+            const spacing = 8;
+            const startX = 64 - ((dots - 1) * spacing) / 2;
+            for (let i = 0; i < dots; i++) {
+                ctx.beginPath();
+                ctx.arc(startX + i * spacing, 95, dotSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
+
+        const tokenGeom = new THREE.CylinderGeometry(2.5, 2.5, 0.4, 32);
+        
+        // --- BOARD GENERATION ---
+        const boardGroup = new THREE.Group();
+        scene.add(boardGroup);
+
+        // Specific layout to match standard look (balanced resources and numbers)
+        const boardLayout = [
+            // Row -2 (Top)
+            {q: 0, r: -2, res: 'ore', num: 10}, {q: 1, r: -2, res: 'sheep', num: 2}, {q: 2, r: -2, res: 'wood', num: 9},
+            // Row -1
+            {q: -1, r: -1, res: 'wheat', num: 12}, {q: 0, r: -1, res: 'brick', num: 6}, {q: 1, r: -1, res: 'sheep', num: 4}, {q: 2, r: -1, res: 'brick', num: 10},
+            // Row 0 (Center)
+            {q: -2, r: 0, res: 'wheat', num: 9}, {q: -1, r: 0, res: 'wood', num: 11}, {q: 0, r: 0, res: 'desert', num: null}, {q: 1, r: 0, res: 'wood', num: 3}, {q: 2, r: 0, res: 'ore', num: 8},
+            // Row 1
+            {q: -2, r: 1, res: 'wood', num: 8}, {q: -1, r: 1, res: 'ore', num: 3}, {q: 0, r: 1, res: 'wheat', num: 4}, {q: 1, r: 1, res: 'sheep', num: 5},
+            // Row 2 (Bottom)
+            {q: -2, r: 2, res: 'brick', num: 5}, {q: -1, r: 2, res: 'wheat', num: 6}, {q: 0, r: 2, res: 'sheep', num: 11}
+        ];
+
+        // Hexagon Geometry (Three.js cylinder is pointy-topped by default)
+        const hexGeom = new THREE.CylinderGeometry(hexSize, hexSize, hexHeight, 6);
+
+        // Helper to add a tile
+        function createTile(q, r, resource, number) {
+            const { x, z } = getHexPixelPos(q, r);
+            
+            // Base Hexagon
+            const mesh = new THREE.Mesh(hexGeom, materials[resource]);
+            mesh.position.set(x, 0, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            boardGroup.add(mesh);
+
+            // Number Token
+            if (number !== null && resource !== 'ocean') {
+                const tokenMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    map: createTokenTexture(number),
+                    roughness: 0.5
+                });
+                const token = new THREE.Mesh(tokenGeom, tokenMat);
+                token.position.set(x, hexHeight / 2 + 0.2, z);
+                token.castShadow = true;
+                token.receiveShadow = true;
+                boardGroup.add(token);
+            }
+            
+            // Robber on desert
+            if (resource === 'desert') {
+                createRobber(x, z);
+            }
+        }
+
+        // Generate Main Board
+        boardLayout.forEach(tile => createTile(tile.q, tile.r, tile.res, tile.num));
+
+        // Generate Ocean (Ring 3)
+        const radius = 3;
+        const portPositions = [
+            {q: 0, r: -3, angle: Math.PI}, {q: 2, r: -3, angle: Math.PI*4/3}, 
+            {q: 3, r: -1, angle: Math.PI*5/3}, {q: 3, r: 1, angle: 0},
+            {q: 1, r: 3, angle: Math.PI/3}, {q: -1, r: 3, angle: Math.PI*2/3},
+            {q: -3, r: 2, angle: Math.PI}, {q: -3, r: 0, angle: Math.PI*4/3},
+            {q: -2, r: -2, angle: Math.PI*5/3} // Approximated port rotations
+        ];
+
+        for (let r = -radius; r <= radius; r++) {
+            let q1 = Math.max(-radius, -r - radius);
+            let q2 = Math.min(radius, -r + radius);
+            for (let q = q1; q <= q2; q++) {
+                if (Math.abs(q) === radius || Math.abs(r) === radius || Math.abs(-q - r) === radius) {
+                    createTile(q, r, 'ocean', null);
+                    
+                    // Check if port should be here
+                    const port = portPositions.find(p => p.q === q && p.r === r);
+                    if (port) {
+                        createPort(q, r, port.angle);
+                    }
+                }
+            }
+        }
+
+        function createPort(q, r, angle) {
+            const { x, z } = getHexPixelPos(q, r);
+            const dockGeo = new THREE.BoxGeometry(1.5, 0.5, 3);
+            const dock = new THREE.Mesh(dockGeo, materials.port);
+            dock.position.set(x, hexHeight / 2 + 0.25, z);
+            dock.rotation.y = angle;
+            // Move dock towards center slightly
+            dock.position.x -= Math.sin(angle) * 3;
+            dock.position.z -= Math.cos(angle) * 3;
+            dock.castShadow = true;
+            boardGroup.add(dock);
+        }
+
+        // --- GAME PIECES (Robber, Settlements, Roads) ---
+        
+        function createRobber(x, z) {
+            const robberGroup = new THREE.Group();
+            
+            const baseGeo = new THREE.CylinderGeometry(1.2, 1.5, 1, 16);
+            const bodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 2, 16);
+            const headGeo = new THREE.SphereGeometry(0.9, 16, 16);
+            
+            const mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+            
+            const base = new THREE.Mesh(baseGeo, mat);
+            base.position.y = 0.5;
+            const body = new THREE.Mesh(bodyGeo, mat);
+            body.position.y = 2;
+            const head = new THREE.Mesh(headGeo, mat);
+            head.position.y = 3.5;
+            
+            [base, body, head].forEach(m => { m.castShadow = true; m.receiveShadow = true; robberGroup.add(m); });
+            
+            robberGroup.position.set(x, hexHeight / 2, z);
+            boardGroup.add(robberGroup);
+        }
+
+        // Piece Geometries
+        const roadGeo = new THREE.BoxGeometry(4.5, 0.8, 1);
+        const houseBaseGeo = new THREE.BoxGeometry(2, 1.5, 2);
+        const houseRoofGeo = new THREE.ConeGeometry(1.8, 1.5, 4);
+        houseRoofGeo.rotateY(Math.PI / 4); // Square pyramid
+
+        function addSettlement(q, r, angleIndex, colorHex) {
+            const p1 = getHexPixelPos(q, r);
+            // Pointy-topped vertices are at 30, 90, 150, 210, 270, 330 degrees
+            const angle = (Math.PI / 6) + (angleIndex * Math.PI / 3);
+            
+            const x = p1.x + hexSize * Math.cos(angle);
+            const z = p1.z + hexSize * Math.sin(angle);
+
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+            const group = new THREE.Group();
+            
+            const base = new THREE.Mesh(houseBaseGeo, mat);
+            base.position.y = 0.75;
+            const roof = new THREE.Mesh(houseRoofGeo, mat);
+            roof.position.y = 2.25;
+            
+            [base, roof].forEach(m => { m.castShadow = true; m.receiveShadow = true; group.add(m); });
+            
+            group.position.set(x, hexHeight / 2, z);
+            boardGroup.add(group);
+        }
+
+        function addRoad(q, r, angleIndex, colorHex) {
+            const p1 = getHexPixelPos(q, r);
+            // Pointy-topped edge centers are at 0, 60, 120, 180, 240, 300 degrees
+            const angle = angleIndex * Math.PI / 3;
+            const offsetDist = hexSize * 0.85; 
+            
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+            const road = new THREE.Mesh(roadGeo, mat);
+            
+            road.position.set(
+                p1.x + Math.cos(angle) * offsetDist,
+                hexHeight / 2 + 0.4,
+                p1.z + Math.sin(angle) * offsetDist
+            );
+            road.rotation.y = -angle + Math.PI/2;
+            road.castShadow = true;
+            road.receiveShadow = true;
+            boardGroup.add(road);
+        }
+
+        // Place some decorative pieces based on the reference image colors
+        const cRed = '#c83134';
+        const cBlue = '#1a6b9c';
+        const cOrange = '#d67a1c';
+        const cPurple = '#8a217c';
+
+        // Red (Mia)
+        addSettlement(0, -1, 0, cRed);
+        addRoad(0, -1, 0, cRed);
+        addRoad(0, -1, 1, cRed);
+
+        // Blue (Nassir)
+        addSettlement(-1, 1, 2, cBlue);
+        addRoad(-1, 1, 3, cBlue);
+
+        // Purple (Candamir)
+        addSettlement(1, 0, 5, cPurple);
+        addRoad(1, 0, 5, cPurple);
+        addRoad(1, -1, 0, cPurple);
+        addRoad(2, -1, 4, cPurple);
+        
+        // Orange (Jean)
+        addSettlement(0, 2, 4, cOrange);
+        addRoad(0, 2, 4, cOrange);
+
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Animate Ocean Waves
+            const time = Date.now() * 0.0012;
+            const positions = oceanPlane.geometry.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+                const bp = basePositions[i];
+                // Combine sine waves to create organic water rolling effect
+                const wave1 = Math.sin(bp.x * 0.05 + time) * 0.5;
+                const wave2 = Math.sin(bp.z * 0.06 + time * 0.8) * 0.5;
+                const wave3 = Math.sin((bp.x + bp.z) * 0.1 - time * 1.5) * 0.2;
+                
+                positions.setY(i, bp.y + wave1 + wave2 + wave3);
+            }
+            positions.needsUpdate = true;
+            oceanPlane.geometry.computeVertexNormals(); // Crucial for updating low-poly light reflection
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start Loop
+        animate();
+    </script>
+</body>
+</html>
