@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Catan Board Game</title>
-    <!-- Tailwind CSS for UI -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js for 3D Rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Roboto:wght@400;700&display=swap');
-        
+
         body {
             margin: 0;
             overflow: hidden;
@@ -20,589 +18,1277 @@
             font-family: 'Roboto', sans-serif;
             user-select: none;
         }
-
-        .font-game {
-            font-family: 'Fredoka One', cursive;
-        }
-
-        /* Player Tag Shapes */
-        .player-tag {
-            clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
-        }
-
+        .font-game { font-family: 'Fredoka One', cursive; }
         .btn-side {
             background: linear-gradient(180deg, #ffca28, #f57f17);
             border: 2px solid #5d4037;
             box-shadow: 0 4px 0 #5d4037;
             transition: transform 0.1s, box-shadow 0.1s;
         }
-        .btn-side:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 0 #5d4037;
+        .btn-side:active { transform: translateY(4px); box-shadow: 0 0 0 #5d4037; }
+        .btn-side:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-action {
+            background: linear-gradient(180deg, #ffca28, #f57f17);
+            border: 2px solid #5d4037;
+            box-shadow: 0 3px 0 #5d4037;
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-
-        /* Custom Scrollbar for hidden elements */
+        .btn-action:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #5d4037; }
+        .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-action.active { background: linear-gradient(180deg, #66bb6a, #2e7d32); border-color: #1b5e20; box-shadow: 0 3px 0 #1b5e20; }
+        .glow-current { box-shadow: 0 0 15px 3px rgba(255,215,0,0.7), 0 4px 6px rgba(0,0,0,0.3); }
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="w-screen h-screen relative">
 
-    <!-- 3D Canvas Container -->
+    <!-- 3D Canvas -->
     <div id="canvas-container" class="absolute inset-0 w-full h-full"></div>
 
-    <!-- UI Overlay (pointer-events-none allows dragging the 3D canvas behind it) -->
+    <!-- UI Overlay -->
     <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4">
-        
-        <!-- Top Players Bar -->
-        <div class="flex justify-center items-start space-x-2 w-full mt-2 pointer-events-auto">
-            
-            <!-- Red Player (Mia) -->
-            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-red-800 w-64 shadow-lg shadow-black/50">
-                <div class="absolute -top-3 -left-3 bg-red-700 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
-                <div class="flex h-full bg-[#c83134] rounded">
-                    <!-- Avatar -->
-                    <div class="w-16 bg-[#a72323] rounded-l flex items-center justify-center overflow-hidden border-r-2 border-[#811818]">
-                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=a72323" alt="Mia" class="w-14 h-14 object-cover">
-                    </div>
-                    <!-- Info -->
-                    <div class="flex-1 flex flex-col justify-between p-1">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-white font-bold text-sm">Mia</span>
-                            <span class="text-white">👤</span>
-                        </div>
-                        <div class="bg-[#811818] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
-                            <div class="flex items-center"><span class="mr-1">🏆</span> 5</div>
-                            <div class="flex items-center"><span class="mr-1">🛡️</span> 2</div>
-                            <div class="ml-auto w-5 h-5 bg-black/40 rounded flex items-center justify-center">🔄</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Cards overlay -->
-                <div class="absolute -bottom-4 -left-2 flex rotate-[-10deg]">
-                    <div class="w-6 h-8 bg-white border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-red-700">4</div>
-                    <div class="w-6 h-8 bg-red-700 border border-gray-400 rounded-sm shadow -ml-3 text-[10px] text-center leading-8 font-bold text-white">0</div>
-                </div>
-            </div>
 
-            <!-- Blue Player (Nassir) -->
-            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-blue-900 w-56 shadow-lg shadow-black/50">
-                <div class="absolute -top-3 -left-3 bg-blue-800 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
-                <div class="flex h-full bg-[#1a6b9c] rounded">
-                    <div class="flex-1 flex flex-col justify-between p-1">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-white font-bold text-sm">Nassir</span>
-                            <span class="text-white">👤</span>
-                        </div>
-                        <div class="bg-[#124d73] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
-                            <div class="flex items-center"><span class="mr-1">🏆</span> 3</div>
-                            <div class="flex items-center"><span class="mr-1">🛡️</span> 1</div>
-                        </div>
-                    </div>
-                    <div class="w-14 bg-[#124d73] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#0c3652]">
-                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Nassir&backgroundColor=124d73" alt="Nassir" class="w-12 h-12">
-                    </div>
-                </div>
-                <div class="absolute -bottom-4 left-2 flex rotate-[5deg]">
-                    <div class="w-6 h-8 bg-blue-500 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">10</div>
-                    <div class="w-6 h-8 bg-blue-800 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
-                </div>
-            </div>
-
-            <!-- Center Logs/Roads gap -->
-            <div class="w-24 h-12 flex flex-col justify-center items-center space-y-1">
-                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
-                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
-                <div class="w-10 h-1 bg-yellow-600 rounded"></div>
-            </div>
-
-            <!-- Orange Player (Jean) -->
-            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-orange-700 w-56 shadow-lg shadow-black/50">
-                <div class="absolute -top-3 -left-3 bg-orange-600 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">5</div>
-                <div class="flex h-full bg-[#d67a1c] rounded">
-                    <div class="flex-1 flex flex-col justify-between p-1">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-white font-bold text-sm">Jean</span>
-                            <span class="text-white">👤</span>
-                        </div>
-                        <div class="bg-[#a85e13] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
-                            <div class="flex items-center"><span class="mr-1">🏆</span> 2</div>
-                            <div class="flex items-center"><span class="mr-1">🛡️</span> 0</div>
-                        </div>
-                    </div>
-                    <div class="w-14 bg-[#a85e13] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#7a430d]">
-                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Jean&backgroundColor=a85e13" alt="Jean" class="w-12 h-12">
-                    </div>
-                </div>
-                <div class="absolute -bottom-4 left-6 flex rotate-[-5deg]">
-                    <div class="w-6 h-8 bg-orange-400 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">9</div>
-                    <div class="w-6 h-8 bg-orange-700 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
-                </div>
-            </div>
-
-            <!-- Purple Player (Candamir) -->
-            <div class="relative bg-[#3e2723] p-1 rounded-lg border-2 border-purple-900 w-56 shadow-lg shadow-black/50">
-                <div class="absolute -top-3 -left-3 bg-purple-800 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg">8</div>
-                <div class="flex h-full bg-[#8a217c] rounded">
-                    <div class="flex-1 flex flex-col justify-between p-1">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-white font-bold text-sm">Candamir</span>
-                            <span class="text-white">👤</span>
-                        </div>
-                        <div class="bg-[#5a1551] flex items-center p-1 rounded text-white text-xs font-bold space-x-3">
-                            <div class="flex items-center"><span class="mr-1">🏆</span> 8</div>
-                            <div class="flex items-center"><span class="mr-1">🛡️</span> 0</div>
-                        </div>
-                    </div>
-                    <div class="w-14 bg-[#5a1551] rounded-r flex items-center justify-center overflow-hidden border-l-2 border-[#360c30]">
-                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Candamir&backgroundColor=5a1551" alt="Candamir" class="w-12 h-12">
-                    </div>
-                </div>
-                <div class="absolute -bottom-4 left-4 flex rotate-[10deg]">
-                    <div class="w-6 h-8 bg-purple-500 border border-gray-400 rounded-sm shadow text-[10px] text-center leading-8 font-bold text-white">6</div>
-                    <div class="w-6 h-8 bg-purple-900 border border-gray-400 rounded-sm shadow -ml-2 text-[10px] text-center leading-8 font-bold text-white">0</div>
-                </div>
-            </div>
-
+        <!-- Top: Players Bar -->
+        <div id="players-bar" class="flex justify-center items-start space-x-2 w-full mt-2 pointer-events-auto flex-wrap">
         </div>
 
-        <!-- Middle Area (Side Buttons) -->
+        <!-- Middle Area -->
         <div class="flex-1 flex justify-between items-end pb-16 pointer-events-none">
-            
-            <!-- Left Side Action Buttons -->
+            <!-- Left Side Buttons -->
             <div class="flex flex-col space-y-2 pointer-events-auto">
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">💬</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">🙂</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">🤝</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">📊</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">ℹ️</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">📖</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">⚙️</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">❌</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Chat not implemented yet')">&#x1F4AC;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Emotes not implemented yet')">&#x1F642;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Trade not implemented yet')">&#x1F91D;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Stats not implemented yet')">&#x1F4CA;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Info not implemented yet')">&#x2139;&#xFE0F;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Rules not implemented yet')">&#x1F4D6;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Settings not implemented yet')">&#x2699;&#xFE0F;</button>
             </div>
 
-            <!-- Right Side Bottom Buttons -->
-            <div class="flex space-x-3 pointer-events-auto">
-                <button class="btn-side w-14 h-14 rounded-xl flex items-center justify-center p-1">
-                    <div class="grid grid-cols-2 gap-1 w-full h-full bg-white rounded p-1">
-                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
-                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
-                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
-                        <div class="w-2 h-2 bg-black rounded-full mx-auto self-center"></div>
-                    </div>
-                </button>
-                <button class="btn-side w-16 h-14 rounded-xl flex items-center justify-center bg-gradient-to-b from-yellow-400 to-orange-500">
-                    <span class="text-3xl font-bold text-[#5d4037]">↻</span>
-                </button>
+            <!-- Right Side: Action Buttons -->
+            <div class="flex flex-col items-end space-y-2 pointer-events-auto">
+                <div id="game-status" class="bg-black/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-yellow-700 mb-1"></div>
+                <div id="action-buttons" class="flex flex-col space-y-2 items-end"></div>
             </div>
         </div>
 
-        <!-- Bottom Resource Bar -->
+        <!-- Bottom: Resource Bar -->
         <div class="flex justify-center w-full pb-2 pointer-events-auto">
-            <div class="bg-black/90 border-2 border-red-800 shadow-[0_0_15px_rgba(200,49,52,0.6)] rounded-full px-6 py-2 flex items-center space-x-6">
+            <div id="resource-bar" class="bg-black/90 border-2 border-red-800 shadow-[0_0_15px_rgba(200,49,52,0.6)] rounded-full px-6 py-2 flex items-center space-x-6">
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- Create Game Dialog -->
+    <div id="create-game-dialog" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
+        <div class="bg-[#3e2723] border-2 border-yellow-700 rounded-xl p-6 w-[420px] shadow-2xl">
+            <h2 class="font-game text-yellow-400 text-2xl text-center mb-4">New Game</h2>
+            <div id="player-inputs" class="space-y-3">
                 <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-[#3b5e2b] rounded-sm border border-black shadow"></div>
-                    <span class="text-white font-bold text-sm">0</span>
+                    <span class="text-white font-bold w-6">1.</span>
+                    <input type="text" class="flex-1 px-3 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800 focus:border-yellow-400 outline-none" placeholder="Player name" value="Alice">
+                    <select class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">
+                        <option value="red">Red</option><option value="blue">Blue</option><option value="white">White</option><option value="orange">Orange</option>
+                    </select>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-[#bd5a36] rounded-sm border border-black shadow"></div>
-                    <span class="text-white font-bold text-sm">0</span>
+                    <span class="text-white font-bold w-6">2.</span>
+                    <input type="text" class="flex-1 px-3 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800 focus:border-yellow-400 outline-none" placeholder="Player name" value="Bob">
+                    <select class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">
+                        <option value="blue" selected>Blue</option><option value="red">Red</option><option value="white">White</option><option value="orange">Orange</option>
+                    </select>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-[#8ebd3f] rounded-sm border border-black shadow"></div>
-                    <span class="text-white font-bold text-sm">1</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="text-yellow-400 text-xl leading-none">🏆</span>
-                    <span class="text-white font-bold text-sm">3</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-[#82858c] rounded-sm border border-black shadow"></div>
-                    <span class="text-white font-bold text-sm">0</span>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button onclick="addPlayerInput()" class="btn-action px-3 py-1.5 rounded text-sm font-bold text-[#3e2723]">+ Add Player</button>
+                <button onclick="startGame()" class="btn-action px-6 py-2 rounded font-bold text-[#3e2723] text-lg">Start Game</button>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-yellow-600 text-xs">or join existing:</p>
+                <div class="flex space-x-1 mt-1">
+                    <input type="text" id="join-game-id" class="flex-1 px-2 py-1 rounded bg-[#5d4037] text-white border border-yellow-800 text-xs" placeholder="game_id">
+                    <input type="text" id="join-token" class="flex-1 px-2 py-1 rounded bg-[#5d4037] text-white border border-yellow-800 text-xs" placeholder="player_token">
+                    <button onclick="joinGame()" class="btn-action px-2 py-1 rounded text-xs font-bold text-[#3e2723]">Join</button>
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- Discard Dialog -->
+    <div id="discard-dialog" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-[#3e2723] border-2 border-red-700 rounded-xl p-6 w-[400px] shadow-2xl">
+            <h2 class="font-game text-red-400 text-xl text-center mb-2">Discard Resources</h2>
+            <p id="discard-info" class="text-white text-sm text-center mb-3"></p>
+            <div id="discard-inputs" class="space-y-2"></div>
+            <button onclick="submitDiscard()" class="btn-action w-full mt-4 py-2 rounded font-bold text-[#3e2723]">Confirm Discard</button>
+        </div>
+    </div>
+
+    <!-- Robber Victim Dialog -->
+    <div id="victim-dialog" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-[#3e2723] border-2 border-yellow-700 rounded-xl p-6 w-[350px] shadow-2xl">
+            <h2 class="font-game text-yellow-400 text-xl text-center mb-3">Steal From</h2>
+            <div id="victim-buttons" class="space-y-2"></div>
+            <button onclick="hideVictimDialog()" class="text-yellow-600 text-sm mt-3 block mx-auto">Skip (no steal)</button>
+        </div>
     </div>
 
     <script>
-        // --- THREE.JS SCENE SETUP ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color('#87ceeb'); // Sunny sky background
-        scene.fog = new THREE.FogExp2('#87ceeb', 0.0025); // Horizon fog
-        
-        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // Position camera to mimic the reference image (angled slightly down)
-        camera.position.set(0, 55, 65);
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        container.appendChild(renderer.domElement);
+    // ======== CONFIGURATION & CONSTANTS ========
+    const API_BASE = 'http://localhost:8000';
+    const WS_BASE = 'ws://localhost:8000';
 
-        // Controls
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2.2; // Don't go below the table
-        controls.minDistance = 30;
-        controls.maxDistance = 150;
-        controls.target.set(0, 0, 0);
+    const TILE_AXIAL = {
+        0:{q:0,r:-2},  1:{q:1,r:-2},  2:{q:2,r:-2},
+        3:{q:-1,r:-1}, 4:{q:0,r:-1},  5:{q:1,r:-1},  6:{q:2,r:-1},
+        7:{q:-2,r:0},  8:{q:-1,r:0},  9:{q:0,r:0},   10:{q:1,r:0},  11:{q:2,r:0},
+        12:{q:-2,r:1}, 13:{q:-1,r:1}, 14:{q:0,r:1},   15:{q:1,r:1},
+        16:{q:-2,r:2}, 17:{q:-1,r:2}, 18:{q:0,r:2}
+    };
 
-        // --- LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
+    const RESOURCE_MAP = {
+        'BRICK':'brick', 'LUMBER':'wood', 'WOOL':'sheep',
+        'GRAIN':'wheat', 'ORE':'ore', 'DESERT':'desert'
+    };
 
-        const dirLight = new THREE.DirectionalLight(0xffeedd, 0.9);
-        dirLight.position.set(30, 50, 20);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.left = -40;
-        dirLight.shadow.camera.right = 40;
-        dirLight.shadow.camera.top = 40;
-        dirLight.shadow.camera.bottom = -40;
-        scene.add(dirLight);
+    const RESOURCE_LABELS = {
+        'BRICK':'Brick', 'LUMBER':'Wood', 'WOOL':'Sheep',
+        'GRAIN':'Wheat', 'ORE':'Ore'
+    };
 
-        const fillLight = new THREE.DirectionalLight(0xddeeff, 0.3);
-        fillLight.position.set(-30, 20, -20);
-        scene.add(fillLight);
+    const RESOURCE_COLORS = {
+        'BRICK':'#bd5a36', 'LUMBER':'#3b5e2b', 'WOOL':'#8ebd3f',
+        'GRAIN':'#f0c24f', 'ORE':'#82858c'
+    };
 
-        // --- MATERIALS & TEXTURES ---
-        // Hexagon Colors (rich, toy-like palette)
-        const colors = {
-            wood: '#3b5e2b',
-            sheep: '#8ebd3f',
-            wheat: '#f0c24f',
-            brick: '#bd5a36',
-            ore: '#82858c',
-            desert: '#d6c596',
-            ocean: '#408ab5',
-            port: '#5c4033'
-        };
+    const RESOURCE_ORDER = ['LUMBER','BRICK','WOOL','GRAIN','ORE'];
 
-        const materials = {};
-        for (const [key, hex] of Object.entries(colors)) {
-            materials[key] = new THREE.MeshStandardMaterial({
-                color: hex,
-                roughness: key === 'ocean' ? 0.3 : 0.8,
-                metalness: key === 'ocean' ? 0.1 : 0.0,
-                flatShading: true // Gives a slightly faceted, clean look
-            });
+    const PLAYER_COLORS = {
+        'red':'#c83134', 'blue':'#1a6b9c', 'white':'#e0e0e0', 'orange':'#d67a1c',
+        'green':'#2e7d32', 'purple':'#8a217c'
+    };
+    const PLAYER_COLORS_DARK = {
+        'red':'#811818', 'blue':'#0c3652', 'white':'#999999', 'orange':'#7a430d',
+        'green':'#1b5e20', 'purple':'#5a1551'
+    };
+    const PLAYER_COLORS_MID = {
+        'red':'#a72323', 'blue':'#124d73', 'white':'#bbbbbb', 'orange':'#a85e13',
+        'green':'#266b24', 'purple':'#6e1a63'
+    };
+
+    // ======== STATE MANAGEMENT ========
+    const GameState = {
+        gameId: null,
+        playerToken: null,
+        myPlayerId: null,
+        version: 0,
+        publicState: null,
+        privateState: null,
+        vertexPositions: {},
+        edgePositions: {},
+        tilePositions: {},
+        playerMap: {},
+        interactionMode: 'none',
+        pendingRobberTileId: null,
+        // Track whether current turn has rolled (backend doesn't reset last_roll)
+        lastKnownTurn: null, // {turnNumber, playerId}
+        hasRolledThisTurn: false,
+    };
+
+    function updateState(envelope) {
+        if (!envelope) return;
+        GameState.publicState = envelope.public_state;
+        GameState.privateState = envelope.private_state || null;
+        GameState.version = envelope.version;
+        if (GameState.privateState) {
+            GameState.myPlayerId = GameState.privateState.player_id;
         }
+        GameState.playerMap = {};
+        if (GameState.publicState && GameState.publicState.players) {
+            for (const p of GameState.publicState.players) {
+                GameState.playerMap[p.id] = p;
+            }
+        }
+        // Detect turn change to reset roll tracking
+        const turn = GameState.publicState?.turn;
+        if (turn) {
+            const turnKey = turn.number + '-' + turn.current_player_id;
+            if (GameState.lastKnownTurn !== turnKey) {
+                GameState.lastKnownTurn = turnKey;
+                GameState.hasRolledThisTurn = false;
+            }
+            // If last_roll changed and it's our turn, mark as rolled
+            if (turn.last_roll !== null && turn.last_roll !== undefined && isMyTurn()) {
+                // Compare with previous: if we just got state and last_roll exists,
+                // and we haven't tracked a roll yet, infer it happened
+                if (!GameState.hasRolledThisTurn && GameState.publicState.phase === 'MAIN') {
+                    GameState.hasRolledThisTurn = true;
+                }
+            }
+        }
+        GameState.interactionMode = 'none';
+        rebuildScene();
+        updateUI();
+        checkPendingModals();
+    }
 
-        // --- OCEAN SIMULATION ---
-        const oceanGeo = new THREE.PlaneGeometry(800, 800, 60, 60);
-        oceanGeo.rotateX(-Math.PI / 2); // Rotate to lay flat
-
-        const oceanMat = new THREE.MeshStandardMaterial({ 
-            color: '#0a6c9c', 
-            roughness: 0.1, 
-            metalness: 0.4,
-            flatShading: true,
-            transparent: true,
-            opacity: 0.85
+    // ======== API CLIENT ========
+    async function apiCreateGame(players) {
+        const res = await fetch(`${API_BASE}/games`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({players})
         });
-        const oceanPlane = new THREE.Mesh(oceanGeo, oceanMat);
-        oceanPlane.position.y = -1.0; // Level so waves lap against the hex bases
-        oceanPlane.receiveShadow = true;
-        scene.add(oceanPlane);
+        if (!res.ok) { showToast('Failed to create game: ' + res.statusText, 'error'); return null; }
+        return await res.json();
+    }
 
-        // Save original vertices for wave math
-        const basePositions = [];
-        const positions = oceanPlane.geometry.attributes.position;
-        for (let i = 0; i < positions.count; i++) {
-            basePositions.push({
-                x: positions.getX(i),
-                y: positions.getY(i),
-                z: positions.getZ(i)
+    async function apiGetState(gameId, playerToken) {
+        const url = playerToken
+            ? `${API_BASE}/games/${gameId}/state?player_token=${playerToken}`
+            : `${API_BASE}/games/${gameId}/state`;
+        const res = await fetch(url);
+        if (!res.ok) { showToast('Failed to get state: ' + res.statusText, 'error'); return null; }
+        return await res.json();
+    }
+
+    async function apiCommand(command, payload = {}) {
+        if (!GameState.gameId || !GameState.playerToken) return null;
+        const body = {
+            player_token: GameState.playerToken,
+            command: command,
+            payload: payload,
+            expected_version: GameState.version
+        };
+        try {
+            const res = await fetch(`${API_BASE}/games/${GameState.gameId}/commands`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(body)
             });
-        }
-
-        // --- HEXAGON MATH ---
-        const hexSize = 7;
-        const hexHeight = 1.8;
-        const hexGap = 1.02; // Slight spacing
-
-        // Calculate Pixel coordinates for Pointy-Topped Hexagons
-        function getHexPixelPos(q, r) {
-            const x = hexSize * hexGap * Math.sqrt(3) * (q + r / 2);
-            const z = hexSize * hexGap * 3 / 2 * r;
-            return { x, z };
-        }
-
-        // --- TOKEN TEXTURE GENERATOR ---
-        function createTokenTexture(number) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-
-            // Background circle
-            ctx.fillStyle = '#fdfbf7';
-            ctx.beginPath();
-            ctx.arc(64, 64, 60, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Border
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#222';
-            ctx.stroke();
-
-            // Text
-            const isRed = number === 6 || number === 8;
-            ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
-            ctx.font = 'bold 54px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(number.toString(), 64, 60);
-
-            // Probability Dots
-            let dots = number <= 7 ? number - 1 : 13 - number;
-            ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
-            const dotSize = 3;
-            const spacing = 8;
-            const startX = 64 - ((dots - 1) * spacing) / 2;
-            for (let i = 0; i < dots; i++) {
-                ctx.beginPath();
-                ctx.arc(startX + i * spacing, 95, dotSize, 0, Math.PI * 2);
-                ctx.fill();
+            if (res.status === 401) { showToast('Invalid player token', 'error'); return null; }
+            if (res.status === 404) { showToast('Game not found', 'error'); return null; }
+            const data = await res.json();
+            if (!data.accepted) {
+                if (data.reason && data.reason.includes('Version mismatch')) {
+                    const freshState = await apiGetState(GameState.gameId, GameState.playerToken);
+                    if (freshState) updateState(freshState);
+                    showToast('State refreshed, try again', 'warning');
+                } else {
+                    showToast(data.reason || 'Command rejected', 'error');
+                }
+                return data;
             }
-
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            return texture;
+            if (data.state) updateState(data.state);
+            return data;
+        } catch (e) {
+            showToast('Network error: ' + e.message, 'error');
+            return null;
         }
+    }
 
-        const tokenGeom = new THREE.CylinderGeometry(2.5, 2.5, 0.4, 32);
-        
-        // --- BOARD GENERATION ---
-        const boardGroup = new THREE.Group();
-        scene.add(boardGroup);
+    // ======== WEBSOCKET ========
+    let ws = null;
 
-        // Specific layout to match standard look (balanced resources and numbers)
-        const boardLayout = [
-            // Row -2 (Top)
-            {q: 0, r: -2, res: 'ore', num: 10}, {q: 1, r: -2, res: 'sheep', num: 2}, {q: 2, r: -2, res: 'wood', num: 9},
-            // Row -1
-            {q: -1, r: -1, res: 'wheat', num: 12}, {q: 0, r: -1, res: 'brick', num: 6}, {q: 1, r: -1, res: 'sheep', num: 4}, {q: 2, r: -1, res: 'brick', num: 10},
-            // Row 0 (Center)
-            {q: -2, r: 0, res: 'wheat', num: 9}, {q: -1, r: 0, res: 'wood', num: 11}, {q: 0, r: 0, res: 'desert', num: null}, {q: 1, r: 0, res: 'wood', num: 3}, {q: 2, r: 0, res: 'ore', num: 8},
-            // Row 1
-            {q: -2, r: 1, res: 'wood', num: 8}, {q: -1, r: 1, res: 'ore', num: 3}, {q: 0, r: 1, res: 'wheat', num: 4}, {q: 1, r: 1, res: 'sheep', num: 5},
-            // Row 2 (Bottom)
-            {q: -2, r: 2, res: 'brick', num: 5}, {q: -1, r: 2, res: 'wheat', num: 6}, {q: 0, r: 2, res: 'sheep', num: 11}
-        ];
-
-        // Hexagon Geometry (Three.js cylinder is pointy-topped by default)
-        const hexGeom = new THREE.CylinderGeometry(hexSize, hexSize, hexHeight, 6);
-
-        // Helper to add a tile
-        function createTile(q, r, resource, number) {
-            const { x, z } = getHexPixelPos(q, r);
-            
-            // Base Hexagon
-            const mesh = new THREE.Mesh(hexGeom, materials[resource]);
-            mesh.position.set(x, 0, z);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            boardGroup.add(mesh);
-
-            // Number Token
-            if (number !== null && resource !== 'ocean') {
-                const tokenMat = new THREE.MeshStandardMaterial({
-                    color: 0xffffff,
-                    map: createTokenTexture(number),
-                    roughness: 0.5
+    function connectWebSocket(gameId) {
+        if (ws) { ws.onclose = null; ws.close(); }
+        ws = new WebSocket(`${WS_BASE}/ws/games/${gameId}`);
+        ws.onopen = () => {
+            if (GameState.playerToken) {
+                ws.send(JSON.stringify({type:'snapshot', payload:{player_token: GameState.playerToken}}));
+            }
+        };
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'snapshot') {
+                updateState(msg.payload);
+            } else if (msg.type === 'game_state_updated') {
+                apiGetState(GameState.gameId, GameState.playerToken).then(state => {
+                    if (state) updateState(state);
                 });
-                const token = new THREE.Mesh(tokenGeom, tokenMat);
-                token.position.set(x, hexHeight / 2 + 0.2, z);
-                token.castShadow = true;
-                token.receiveShadow = true;
-                boardGroup.add(token);
+            } else if (msg.type === 'error') {
+                showToast(msg.payload.message || 'WebSocket error', 'error');
             }
-            
-            // Robber on desert
-            if (resource === 'desert') {
-                createRobber(x, z);
+        };
+        ws.onclose = () => {
+            setTimeout(() => connectWebSocket(gameId), 3000);
+        };
+    }
+
+    // ======== TOAST NOTIFICATIONS ========
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const colors = {info:'bg-blue-800 border-blue-600', error:'bg-red-900 border-red-600', warning:'bg-yellow-800 border-yellow-600', success:'bg-green-800 border-green-600'};
+        const el = document.createElement('div');
+        el.className = `${colors[type] || colors.info} border text-white text-sm px-4 py-2 rounded-lg shadow-lg pointer-events-auto opacity-0 transition-opacity duration-300`;
+        el.textContent = message;
+        container.appendChild(el);
+        requestAnimationFrame(() => el.style.opacity = '1');
+        setTimeout(() => {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 300);
+        }, 3500);
+    }
+
+    // ======== THREE.JS SCENE SETUP ========
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#87ceeb');
+    scene.fog = new THREE.FogExp2('#87ceeb', 0.0025);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 55, 65);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2.2;
+    controls.minDistance = 30;
+    controls.maxDistance = 150;
+    controls.target.set(0, 0, 0);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffeedd, 0.9);
+    dirLight.position.set(30, 50, 20);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.left = -40;
+    dirLight.shadow.camera.right = 40;
+    dirLight.shadow.camera.top = 40;
+    dirLight.shadow.camera.bottom = -40;
+    scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0xddeeff, 0.3);
+    fillLight.position.set(-30, 20, -20);
+    scene.add(fillLight);
+
+    // Materials
+    const hexColors = {
+        wood:'#3b5e2b', sheep:'#8ebd3f', wheat:'#f0c24f',
+        brick:'#bd5a36', ore:'#82858c', desert:'#d6c596', ocean:'#408ab5'
+    };
+    const hexMaterials = {};
+    for (const [key, hex] of Object.entries(hexColors)) {
+        hexMaterials[key] = new THREE.MeshStandardMaterial({
+            color: hex, roughness: key === 'ocean' ? 0.3 : 0.8, metalness: key === 'ocean' ? 0.1 : 0.0, flatShading: true
+        });
+    }
+
+    // Ocean plane (animated waves)
+    const oceanGeo = new THREE.PlaneGeometry(800, 800, 60, 60);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshStandardMaterial({ color:'#0a6c9c', roughness:0.1, metalness:0.4, flatShading:true, transparent:true, opacity:0.85 });
+    const oceanPlane = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanPlane.position.y = -1.0;
+    oceanPlane.receiveShadow = true;
+    scene.add(oceanPlane);
+    const basePositions = [];
+    const oceanPositions = oceanPlane.geometry.attributes.position;
+    for (let i = 0; i < oceanPositions.count; i++) {
+        basePositions.push({ x: oceanPositions.getX(i), y: oceanPositions.getY(i), z: oceanPositions.getZ(i) });
+    }
+
+    // Board group (cleared & rebuilt on state updates)
+    const boardGroup = new THREE.Group();
+    scene.add(boardGroup);
+
+    // ======== GEOMETRY CONSTANTS ========
+    const hexSize = 7;
+    const hexHeight = 1.8;
+    const hexGap = 1.02;
+    const hexGeom = new THREE.CylinderGeometry(hexSize, hexSize, hexHeight, 6);
+    const tokenGeom = new THREE.CylinderGeometry(2.5, 2.5, 0.4, 32);
+    const roadGeo = new THREE.BoxGeometry(4.5, 0.8, 1);
+    const houseBaseGeo = new THREE.BoxGeometry(2, 1.5, 2);
+    const houseRoofGeo = new THREE.ConeGeometry(1.8, 1.5, 4);
+    houseRoofGeo.rotateY(Math.PI / 4);
+    const cityBaseGeo = new THREE.BoxGeometry(2.8, 2, 2.8);
+    const cityTopGeo = new THREE.BoxGeometry(1.6, 1.5, 1.6);
+
+    // Highlight materials
+    const hlSettlementMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
+    const hlRoadMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
+    const hlCityMat = new THREE.MeshStandardMaterial({ color: 0x00ccff, transparent: true, opacity: 0.5 });
+    const hlRobberMat = new THREE.MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 });
+
+    function getHexPixelPos(q, r) {
+        const x = hexSize * hexGap * Math.sqrt(3) * (q + r / 2);
+        const z = hexSize * hexGap * 3 / 2 * r;
+        return { x, z };
+    }
+
+    // ======== GEOMETRY ENGINE ========
+    function computeTilePositions(tiles) {
+        const positions = {};
+        for (const tile of tiles) {
+            const axial = TILE_AXIAL[tile.id];
+            if (axial) positions[tile.id] = getHexPixelPos(axial.q, axial.r);
+        }
+        return positions;
+    }
+
+    function computeVertexPositions(tiles, tilePositions) {
+        const samples = {};
+        for (const tile of tiles) {
+            const center = tilePositions[tile.id];
+            if (!center) continue;
+            for (let i = 0; i < 6; i++) {
+                const vid = tile.vertex_ids[i];
+                const angle = (Math.PI / 6) + (i * Math.PI / 3);
+                const vx = center.x + hexSize * Math.cos(angle);
+                const vz = center.z + hexSize * Math.sin(angle);
+                if (!samples[vid]) samples[vid] = [];
+                samples[vid].push({ x: vx, z: vz });
             }
         }
+        const positions = {};
+        for (const [vid, pts] of Object.entries(samples)) {
+            const avgX = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+            const avgZ = pts.reduce((s, p) => s + p.z, 0) / pts.length;
+            positions[vid] = { x: avgX, z: avgZ };
+        }
+        return positions;
+    }
 
-        // Generate Main Board
-        boardLayout.forEach(tile => createTile(tile.q, tile.r, tile.res, tile.num));
+    function computeEdgePositions(edges, vertexPositions) {
+        const positions = {};
+        for (const edge of edges) {
+            const v1 = vertexPositions[edge.v1];
+            const v2 = vertexPositions[edge.v2];
+            if (!v1 || !v2) continue;
+            positions[edge.id] = {
+                x: (v1.x + v2.x) / 2,
+                z: (v1.z + v2.z) / 2,
+                angle: Math.atan2(v2.z - v1.z, v2.x - v1.x)
+            };
+        }
+        return positions;
+    }
 
-        // Generate Ocean (Ring 3)
+    // ======== TOKEN TEXTURE GENERATOR ========
+    function createTokenTexture(number) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fdfbf7';
+        ctx.beginPath(); ctx.arc(64, 64, 60, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 4; ctx.strokeStyle = '#222'; ctx.stroke();
+        const isRed = number === 6 || number === 8;
+        ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
+        ctx.font = 'bold 54px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(number.toString(), 64, 60);
+        let dots = number <= 7 ? number - 1 : 13 - number;
+        ctx.fillStyle = isRed ? '#d32f2f' : '#222222';
+        const spacing = 8;
+        const startX = 64 - ((dots - 1) * spacing) / 2;
+        for (let i = 0; i < dots; i++) {
+            ctx.beginPath(); ctx.arc(startX + i * spacing, 95, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        return texture;
+    }
+
+    // ======== 3D RENDER FUNCTIONS ========
+    function renderTile(x, z, resource, number, tileId) {
+        const mat = hexMaterials[resource] || hexMaterials.desert;
+        const mesh = new THREE.Mesh(hexGeom, mat);
+        mesh.position.set(x, 0, z);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.userData = { type: 'tile', id: tileId };
+        boardGroup.add(mesh);
+
+        if (number !== null && number !== undefined && resource !== 'desert') {
+            const tokenMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: createTokenTexture(number), roughness: 0.5 });
+            const token = new THREE.Mesh(tokenGeom, tokenMat);
+            token.position.set(x, hexHeight / 2 + 0.2, z);
+            token.castShadow = true; token.receiveShadow = true;
+            token.userData = { type: 'tile', id: tileId };
+            boardGroup.add(token);
+        }
+    }
+
+    function renderOceanRing() {
         const radius = 3;
-        const portPositions = [
-            {q: 0, r: -3, angle: Math.PI}, {q: 2, r: -3, angle: Math.PI*4/3}, 
-            {q: 3, r: -1, angle: Math.PI*5/3}, {q: 3, r: 1, angle: 0},
-            {q: 1, r: 3, angle: Math.PI/3}, {q: -1, r: 3, angle: Math.PI*2/3},
-            {q: -3, r: 2, angle: Math.PI}, {q: -3, r: 0, angle: Math.PI*4/3},
-            {q: -2, r: -2, angle: Math.PI*5/3} // Approximated port rotations
-        ];
-
         for (let r = -radius; r <= radius; r++) {
             let q1 = Math.max(-radius, -r - radius);
             let q2 = Math.min(radius, -r + radius);
             for (let q = q1; q <= q2; q++) {
                 if (Math.abs(q) === radius || Math.abs(r) === radius || Math.abs(-q - r) === radius) {
-                    createTile(q, r, 'ocean', null);
-                    
-                    // Check if port should be here
-                    const port = portPositions.find(p => p.q === q && p.r === r);
-                    if (port) {
-                        createPort(q, r, port.angle);
-                    }
+                    const { x, z } = getHexPixelPos(q, r);
+                    const mesh = new THREE.Mesh(hexGeom, hexMaterials.ocean);
+                    mesh.position.set(x, 0, z);
+                    mesh.receiveShadow = true;
+                    boardGroup.add(mesh);
                 }
             }
         }
+    }
 
-        function createPort(q, r, angle) {
-            const { x, z } = getHexPixelPos(q, r);
-            const dockGeo = new THREE.BoxGeometry(1.5, 0.5, 3);
-            const dock = new THREE.Mesh(dockGeo, materials.port);
-            dock.position.set(x, hexHeight / 2 + 0.25, z);
-            dock.rotation.y = angle;
-            // Move dock towards center slightly
-            dock.position.x -= Math.sin(angle) * 3;
-            dock.position.z -= Math.cos(angle) * 3;
-            dock.castShadow = true;
-            boardGroup.add(dock);
-        }
+    function renderPort(portData) {
+        const v1 = GameState.vertexPositions[portData.vertex_ids[0]];
+        const v2 = GameState.vertexPositions[portData.vertex_ids[1]];
+        if (!v1 || !v2) return;
+        const mx = (v1.x + v2.x) / 2;
+        const mz = (v1.z + v2.z) / 2;
+        const angle = Math.atan2(v2.z - v1.z, v2.x - v1.x);
+        const portMat = new THREE.MeshStandardMaterial({ color: '#5c4033', roughness: 0.5 });
+        const dockGeo = new THREE.BoxGeometry(1.5, 0.5, 3);
+        const dock = new THREE.Mesh(dockGeo, portMat);
+        dock.position.set(mx, hexHeight / 2 + 0.25, mz);
+        dock.rotation.y = -angle;
+        dock.castShadow = true;
+        boardGroup.add(dock);
 
-        // --- GAME PIECES (Robber, Settlements, Roads) ---
-        
-        function createRobber(x, z) {
-            const robberGroup = new THREE.Group();
-            
-            const baseGeo = new THREE.CylinderGeometry(1.2, 1.5, 1, 16);
-            const bodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 2, 16);
-            const headGeo = new THREE.SphereGeometry(0.9, 16, 16);
-            
-            const mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
-            
-            const base = new THREE.Mesh(baseGeo, mat);
-            base.position.y = 0.5;
-            const body = new THREE.Mesh(bodyGeo, mat);
-            body.position.y = 2;
-            const head = new THREE.Mesh(headGeo, mat);
-            head.position.y = 3.5;
-            
-            [base, body, head].forEach(m => { m.castShadow = true; m.receiveShadow = true; robberGroup.add(m); });
-            
-            robberGroup.position.set(x, hexHeight / 2, z);
-            boardGroup.add(robberGroup);
-        }
+        // Port label
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 64; labelCanvas.height = 32;
+        const ctx = labelCanvas.getContext('2d');
+        ctx.fillStyle = '#fdfbf7';
+        ctx.fillRect(0, 0, 64, 32);
+        ctx.fillStyle = '#222';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const label = portData.port_type === 'THREE_TO_ONE' ? '3:1' : '2:1 ' + portData.port_type.charAt(0);
+        ctx.fillText(label, 32, 16);
+        const tex = new THREE.CanvasTexture(labelCanvas);
+        const labelMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+        const labelGeo = new THREE.PlaneGeometry(2, 1);
+        const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+        labelMesh.position.set(mx, hexHeight / 2 + 1.2, mz);
+        labelMesh.rotation.x = -Math.PI / 4;
+        labelMesh.rotation.y = -angle;
+        boardGroup.add(labelMesh);
+    }
 
-        // Piece Geometries
-        const roadGeo = new THREE.BoxGeometry(4.5, 0.8, 1);
-        const houseBaseGeo = new THREE.BoxGeometry(2, 1.5, 2);
-        const houseRoofGeo = new THREE.ConeGeometry(1.8, 1.5, 4);
-        houseRoofGeo.rotateY(Math.PI / 4); // Square pyramid
+    function createRobber(x, z) {
+        const robberGroup = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+        const baseGeo = new THREE.CylinderGeometry(1.2, 1.5, 1, 16);
+        const bodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 2, 16);
+        const headGeo = new THREE.SphereGeometry(0.9, 16, 16);
+        const base = new THREE.Mesh(baseGeo, mat); base.position.y = 0.5;
+        const body = new THREE.Mesh(bodyGeo, mat); body.position.y = 2;
+        const head = new THREE.Mesh(headGeo, mat); head.position.y = 3.5;
+        [base, body, head].forEach(m => { m.castShadow = true; m.receiveShadow = true; robberGroup.add(m); });
+        robberGroup.position.set(x, hexHeight / 2, z);
+        boardGroup.add(robberGroup);
+    }
 
-        function addSettlement(q, r, angleIndex, colorHex) {
-            const p1 = getHexPixelPos(q, r);
-            // Pointy-topped vertices are at 30, 90, 150, 210, 270, 330 degrees
-            const angle = (Math.PI / 6) + (angleIndex * Math.PI / 3);
-            
-            const x = p1.x + hexSize * Math.cos(angle);
-            const z = p1.z + hexSize * Math.sin(angle);
+    function renderSettlement(x, z, colorHex) {
+        const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+        const group = new THREE.Group();
+        const base = new THREE.Mesh(houseBaseGeo, mat); base.position.y = 0.75;
+        const roof = new THREE.Mesh(houseRoofGeo, mat); roof.position.y = 2.25;
+        [base, roof].forEach(m => { m.castShadow = true; m.receiveShadow = true; group.add(m); });
+        group.position.set(x, hexHeight / 2, z);
+        boardGroup.add(group);
+    }
 
-            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
-            const group = new THREE.Group();
-            
-            const base = new THREE.Mesh(houseBaseGeo, mat);
-            base.position.y = 0.75;
-            const roof = new THREE.Mesh(houseRoofGeo, mat);
-            roof.position.y = 2.25;
-            
-            [base, roof].forEach(m => { m.castShadow = true; m.receiveShadow = true; group.add(m); });
-            
-            group.position.set(x, hexHeight / 2, z);
-            boardGroup.add(group);
-        }
+    function renderCity(x, z, colorHex) {
+        const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+        const group = new THREE.Group();
+        const base = new THREE.Mesh(cityBaseGeo, mat); base.position.y = 1;
+        const top = new THREE.Mesh(cityTopGeo, mat); top.position.y = 2.75;
+        [base, top].forEach(m => { m.castShadow = true; m.receiveShadow = true; group.add(m); });
+        group.position.set(x, hexHeight / 2, z);
+        boardGroup.add(group);
+    }
 
-        function addRoad(q, r, angleIndex, colorHex) {
-            const p1 = getHexPixelPos(q, r);
-            // Pointy-topped edge centers are at 0, 60, 120, 180, 240, 300 degrees
-            const angle = angleIndex * Math.PI / 3;
-            const offsetDist = hexSize * 0.85; 
-            
-            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
-            const road = new THREE.Mesh(roadGeo, mat);
-            
-            road.position.set(
-                p1.x + Math.cos(angle) * offsetDist,
-                hexHeight / 2 + 0.4,
-                p1.z + Math.sin(angle) * offsetDist
-            );
-            road.rotation.y = -angle + Math.PI/2;
-            road.castShadow = true;
-            road.receiveShadow = true;
-            boardGroup.add(road);
-        }
+    function renderRoad(x, z, angle, colorHex) {
+        const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+        const road = new THREE.Mesh(roadGeo, mat);
+        road.position.set(x, hexHeight / 2 + 0.4, z);
+        road.rotation.y = -angle + Math.PI / 2;
+        road.castShadow = true; road.receiveShadow = true;
+        boardGroup.add(road);
+    }
 
-        // Place some decorative pieces based on the reference image colors
-        const cRed = '#c83134';
-        const cBlue = '#1a6b9c';
-        const cOrange = '#d67a1c';
-        const cPurple = '#8a217c';
+    // ======== INTERACTION HIGHLIGHTS ========
+    function renderInteractionHighlights() {
+        const mode = GameState.interactionMode;
+        const board = GameState.publicState.board;
 
-        // Red (Mia)
-        addSettlement(0, -1, 0, cRed);
-        addRoad(0, -1, 0, cRed);
-        addRoad(0, -1, 1, cRed);
-
-        // Blue (Nassir)
-        addSettlement(-1, 1, 2, cBlue);
-        addRoad(-1, 1, 3, cBlue);
-
-        // Purple (Candamir)
-        addSettlement(1, 0, 5, cPurple);
-        addRoad(1, 0, 5, cPurple);
-        addRoad(1, -1, 0, cPurple);
-        addRoad(2, -1, 4, cPurple);
-        
-        // Orange (Jean)
-        addSettlement(0, 2, 4, cOrange);
-        addRoad(0, 2, 4, cOrange);
-
-
-        // --- ANIMATION LOOP ---
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Animate Ocean Waves
-            const time = Date.now() * 0.0012;
-            const positions = oceanPlane.geometry.attributes.position;
-            for (let i = 0; i < positions.count; i++) {
-                const bp = basePositions[i];
-                // Combine sine waves to create organic water rolling effect
-                const wave1 = Math.sin(bp.x * 0.05 + time) * 0.5;
-                const wave2 = Math.sin(bp.z * 0.06 + time * 0.8) * 0.5;
-                const wave3 = Math.sin((bp.x + bp.z) * 0.1 - time * 1.5) * 0.2;
-                
-                positions.setY(i, bp.y + wave1 + wave2 + wave3);
+        if (mode === 'place_settlement' || mode === 'place_setup_settlement') {
+            for (const vertex of board.vertices) {
+                if (vertex.building) continue;
+                let blocked = false;
+                for (const adjId of vertex.adjacent_vertex_ids) {
+                    const adj = board.vertices.find(v => v.id === adjId);
+                    if (adj && adj.building) { blocked = true; break; }
+                }
+                if (blocked) continue;
+                const pos = GameState.vertexPositions[vertex.id];
+                if (!pos) continue;
+                const group = new THREE.Group();
+                const base = new THREE.Mesh(houseBaseGeo, hlSettlementMat); base.position.y = 0.75;
+                const roof = new THREE.Mesh(houseRoofGeo, hlSettlementMat); roof.position.y = 2.25;
+                group.add(base, roof);
+                group.position.set(pos.x, hexHeight / 2, pos.z);
+                group.userData = { type: 'vertex', id: vertex.id };
+                boardGroup.add(group);
             }
-            positions.needsUpdate = true;
-            oceanPlane.geometry.computeVertexNormals(); // Crucial for updating low-poly light reflection
+        } else if (mode === 'place_road' || mode === 'place_setup_road') {
+            for (const edge of board.edges) {
+                if (edge.road) continue;
+                const pos = GameState.edgePositions[edge.id];
+                if (!pos) continue;
+                const road = new THREE.Mesh(roadGeo, hlRoadMat);
+                road.position.set(pos.x, hexHeight / 2 + 0.4, pos.z);
+                road.rotation.y = -pos.angle + Math.PI / 2;
+                road.userData = { type: 'edge', id: edge.id };
+                boardGroup.add(road);
+            }
+        } else if (mode === 'place_city') {
+            for (const vertex of board.vertices) {
+                if (!vertex.building || vertex.building.type !== 'settlement') continue;
+                if (vertex.building.owner_id !== GameState.myPlayerId) continue;
+                const pos = GameState.vertexPositions[vertex.id];
+                if (!pos) continue;
+                const group = new THREE.Group();
+                const base = new THREE.Mesh(cityBaseGeo, hlCityMat); base.position.y = 1;
+                const top = new THREE.Mesh(cityTopGeo, hlCityMat); top.position.y = 2.75;
+                group.add(base, top);
+                group.position.set(pos.x, hexHeight / 2, pos.z);
+                group.userData = { type: 'vertex', id: vertex.id };
+                boardGroup.add(group);
+            }
+        } else if (mode === 'move_robber') {
+            const robberTileId = board.robber_tile_id;
+            for (const tile of board.tiles) {
+                if (tile.id === robberTileId) continue;
+                const pos = GameState.tilePositions[tile.id];
+                if (!pos) continue;
+                const marker = new THREE.Mesh(
+                    new THREE.CylinderGeometry(3, 3, 0.3, 6),
+                    hlRobberMat
+                );
+                marker.position.set(pos.x, hexHeight / 2 + 0.5, pos.z);
+                marker.userData = { type: 'tile', id: tile.id };
+                boardGroup.add(marker);
+            }
+        }
+    }
 
-            controls.update();
-            renderer.render(scene, camera);
+    // ======== SCENE REBUILD ========
+    function rebuildScene() {
+        while (boardGroup.children.length > 0) boardGroup.remove(boardGroup.children[0]);
+        const state = GameState.publicState;
+        if (!state) return;
+        const board = state.board;
+
+        // Compute positions
+        GameState.tilePositions = computeTilePositions(board.tiles);
+        GameState.vertexPositions = computeVertexPositions(board.tiles, GameState.tilePositions);
+        GameState.edgePositions = computeEdgePositions(board.edges, GameState.vertexPositions);
+
+        // Ocean ring (decorative)
+        renderOceanRing();
+
+        // Land tiles + tokens
+        for (const tile of board.tiles) {
+            const pos = GameState.tilePositions[tile.id];
+            if (!pos) continue;
+            const resource = RESOURCE_MAP[tile.resource] || 'desert';
+            renderTile(pos.x, pos.z, resource, tile.number_token, tile.id);
         }
 
-        // --- RESIZE HANDLER ---
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        // Ports
+        if (board.ports) {
+            for (const port of board.ports) renderPort(port);
+        }
 
-        // Start Loop
-        animate();
+        // Robber
+        if (board.robber_tile_id !== null && board.robber_tile_id !== undefined) {
+            const rpos = GameState.tilePositions[board.robber_tile_id];
+            if (rpos) createRobber(rpos.x, rpos.z);
+        }
+
+        // Buildings
+        for (const vertex of board.vertices) {
+            if (!vertex.building) continue;
+            const pos = GameState.vertexPositions[vertex.id];
+            if (!pos) continue;
+            const player = GameState.playerMap[vertex.building.owner_id];
+            const colorHex = player ? (PLAYER_COLORS[player.color] || player.color) : '#888';
+            if (vertex.building.type === 'settlement') renderSettlement(pos.x, pos.z, colorHex);
+            else if (vertex.building.type === 'city') renderCity(pos.x, pos.z, colorHex);
+        }
+
+        // Roads
+        for (const edge of board.edges) {
+            if (!edge.road) continue;
+            const pos = GameState.edgePositions[edge.id];
+            if (!pos) continue;
+            const player = GameState.playerMap[edge.road.owner_id];
+            const colorHex = player ? (PLAYER_COLORS[player.color] || player.color) : '#888';
+            renderRoad(pos.x, pos.z, pos.angle, colorHex);
+        }
+
+        // Interaction highlights
+        if (GameState.interactionMode !== 'none') renderInteractionHighlights();
+    }
+
+    // ======== RAYCASTER / BOARD CLICKS ========
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('click', (event) => {
+        if (GameState.interactionMode === 'none') return;
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(boardGroup.children, true);
+        for (const hit of intersects) {
+            let obj = hit.object;
+            while (obj && !obj.userData.type) obj = obj.parent;
+            if (!obj || !obj.userData.type) continue;
+            handleBoardClick(obj.userData.type, obj.userData.id);
+            break;
+        }
+    });
+
+    async function handleBoardClick(type, id) {
+        const mode = GameState.interactionMode;
+
+        if ((mode === 'place_settlement' || mode === 'place_setup_settlement') && type === 'vertex') {
+            const cmd = isSetupPhase() ? 'place_setup_settlement' : 'build_settlement';
+            const result = await apiCommand(cmd, { vertex_id: id });
+            if (result && result.accepted && isSetupPhase()) {
+                // After setup settlement, need to place road
+                GameState.interactionMode = 'place_setup_road';
+                rebuildScene(); updateUI();
+            }
+        } else if ((mode === 'place_road' || mode === 'place_setup_road') && type === 'edge') {
+            const cmd = isSetupPhase() ? 'place_setup_road' : 'build_road';
+            await apiCommand(cmd, { edge_id: id });
+        } else if (mode === 'place_city' && type === 'vertex') {
+            await apiCommand('build_city', { vertex_id: id });
+        } else if (mode === 'move_robber' && type === 'tile') {
+            GameState.pendingRobberTileId = id;
+            const board = GameState.publicState.board;
+            const tile = board.tiles.find(t => t.id === id);
+            if (tile) {
+                const victimIds = new Set();
+                for (const vid of tile.vertex_ids) {
+                    const vertex = board.vertices.find(v => v.id === vid);
+                    if (vertex && vertex.building && vertex.building.owner_id !== GameState.myPlayerId) {
+                        victimIds.add(vertex.building.owner_id);
+                    }
+                }
+                if (victimIds.size > 0) {
+                    showVictimDialog(id, [...victimIds]);
+                } else {
+                    await apiCommand('move_robber', { tile_id: id });
+                }
+            }
+        }
+    }
+
+    function isSetupPhase() {
+        const phase = GameState.publicState?.phase;
+        return phase === 'SETUP_1' || phase === 'SETUP_2';
+    }
+
+    function isMyTurn() {
+        return GameState.publicState?.turn?.current_player_id === GameState.myPlayerId;
+    }
+
+    function getLegalActions() {
+        // Use server-provided legal_actions if available (per contract)
+        if (GameState.privateState?.legal_actions) {
+            return GameState.privateState.legal_actions;
+        }
+        // Otherwise infer from current state
+        return inferLegalActions();
+    }
+
+    function inferLegalActions() {
+        const s = GameState.publicState;
+        if (!s || s.phase === 'FINISHED') return [];
+        const actions = [];
+        const phase = s.phase;
+        const myTurn = isMyTurn();
+
+        // Check pending states (if backend provides them)
+        const pending = s.pending;
+        if (pending) {
+            if (pending.pending_discards) {
+                const req = pending.pending_discards[String(GameState.myPlayerId)];
+                if (req && req > 0) return ['discard_resources'];
+            }
+            if (pending.robber_move_required && myTurn) return ['move_robber'];
+        }
+
+        if (!myTurn) return actions;
+
+        if (phase === 'SETUP_1' || phase === 'SETUP_2') {
+            // Infer setup state from player piece counts
+            const me = GameState.playerMap[GameState.myPlayerId];
+            if (!me) return actions;
+            const numSettlements = (me.settlements || []).length;
+            const numRoads = (me.roads || []).length;
+            if (numSettlements > numRoads) {
+                // Placed settlement, need road
+                actions.push('place_setup_road');
+            } else {
+                // Need settlement (or done with both -> end_turn)
+                const expectedPairs = phase === 'SETUP_1' ? 1 : 2;
+                if (numSettlements >= expectedPairs && numRoads >= expectedPairs) {
+                    actions.push('end_turn');
+                } else {
+                    actions.push('place_setup_settlement');
+                }
+            }
+            return actions;
+        }
+
+        if (phase === 'MAIN') {
+            if (!GameState.hasRolledThisTurn) {
+                actions.push('roll_dice');
+            } else {
+                actions.push('build_road', 'build_settlement', 'build_city', 'buy_development_card', 'end_turn');
+            }
+        }
+        return actions;
+    }
+
+    function hasLegalAction(action) {
+        return getLegalActions().includes(action);
+    }
+
+    // ======== UI UPDATE ========
+    function updateUI() {
+        renderPlayerCards();
+        renderResourceBar();
+        renderActionButtons();
+        renderGameStatus();
+    }
+
+    function renderPlayerCards() {
+        const bar = document.getElementById('players-bar');
+        if (!GameState.publicState) { bar.innerHTML = ''; return; }
+        const players = GameState.publicState.players;
+        const currentId = GameState.publicState.turn?.current_player_id;
+
+        bar.innerHTML = players.map(p => {
+            const color = p.color;
+            const bg = PLAYER_COLORS[color] || color;
+            const bgDark = PLAYER_COLORS_DARK[color] || '#333';
+            const bgMid = PLAYER_COLORS_MID[color] || '#555';
+            const isCurrent = p.id === currentId;
+            const isMe = p.id === GameState.myPlayerId;
+            const glowClass = isCurrent ? 'glow-current' : '';
+            const widthClass = isMe ? 'w-64' : 'w-56';
+
+            return '<div class="relative bg-[#3e2723] p-1 rounded-lg border-2 ' + glowClass + ' ' + widthClass + ' shadow-lg shadow-black/50" style="border-color:' + bgDark + '">'
+                + '<div class="absolute -top-3 -left-3 text-white font-game rounded-full w-8 h-8 flex items-center justify-center border-2 border-black z-10 text-lg" style="background:' + bgDark + '">' + p.victory_points + '</div>'
+                + '<div class="flex h-full rounded" style="background:' + bg + '">'
+                + '<div class="flex-1 flex flex-col justify-between p-1">'
+                + '<div class="flex justify-between items-center px-1">'
+                + '<span class="text-white font-bold text-sm">' + p.name + (isMe ? ' (you)' : '') + '</span>'
+                + (isCurrent ? '<span class="text-yellow-300 text-xs font-bold">&#9733;</span>' : '')
+                + '</div>'
+                + '<div class="flex items-center p-1 rounded text-white text-xs font-bold space-x-3" style="background:' + bgDark + '">'
+                + '<div class="flex items-center"><span class="mr-1">&#127942;</span>' + p.victory_points + '</div>'
+                + '<div class="flex items-center"><span class="mr-1">&#9876;&#65039;</span>' + p.played_knights + '</div>'
+                + (p.has_longest_road ? '<div class="text-yellow-300 text-[10px]">Road</div>' : '')
+                + (p.has_largest_army ? '<div class="text-yellow-300 text-[10px]">Army</div>' : '')
+                + '</div></div>'
+                + '<div class="w-14 rounded-r flex items-center justify-center overflow-hidden border-l-2" style="background:' + bgMid + ';border-color:' + bgDark + '">'
+                + '<div class="text-white text-center text-[10px] font-bold leading-tight">'
+                + '<div>&#127183; ' + p.resource_count + '</div>'
+                + '<div>&#128220; ' + p.dev_card_count + '</div>'
+                + '</div></div></div></div>';
+        }).join('');
+    }
+
+    function renderResourceBar() {
+        const bar = document.getElementById('resource-bar');
+        if (!GameState.privateState) {
+            bar.innerHTML = '<span class="text-white text-sm">Waiting for game state...</span>';
+            return;
+        }
+        const res = GameState.privateState.resources;
+        const vp = GameState.playerMap[GameState.myPlayerId]?.victory_points ?? 0;
+
+        let html = '';
+        for (const key of RESOURCE_ORDER) {
+            const count = res[key] || 0;
+            const color = RESOURCE_COLORS[key];
+            html += '<div class="flex items-center space-x-2" title="' + RESOURCE_LABELS[key] + '">'
+                + '<div class="w-6 h-6 rounded-sm border border-black shadow" style="background:' + color + '"></div>'
+                + '<span class="text-white font-bold text-sm">' + count + '</span></div>';
+        }
+        html += '<div class="flex items-center space-x-2">'
+            + '<span class="text-yellow-400 text-xl leading-none">&#127942;</span>'
+            + '<span class="text-white font-bold text-sm">' + vp + '</span></div>';
+        bar.innerHTML = html;
+    }
+
+    function renderActionButtons() {
+        const el = document.getElementById('action-buttons');
+        if (!GameState.publicState) { el.innerHTML = ''; return; }
+
+        const legal = getLegalActions();
+        const mode = GameState.interactionMode;
+        let html = '';
+
+        // Auto-enter setup placement
+        if (isMyTurn() && isSetupPhase() && mode === 'none') {
+            if (hasLegalAction('place_setup_settlement')) {
+                GameState.interactionMode = 'place_setup_settlement';
+                rebuildScene();
+            } else if (hasLegalAction('place_setup_road')) {
+                GameState.interactionMode = 'place_setup_road';
+                rebuildScene();
+            }
+        }
+
+        // Info banners
+        if (isSetupPhase() && isMyTurn()) {
+            if (GameState.interactionMode === 'place_setup_settlement') {
+                html += '<div class="bg-green-800/80 text-white text-xs px-3 py-1 rounded border border-green-600">Click a vertex to place settlement</div>';
+            } else if (GameState.interactionMode === 'place_setup_road') {
+                html += '<div class="bg-green-800/80 text-white text-xs px-3 py-1 rounded border border-green-600">Click an edge to place road</div>';
+            }
+        }
+        if (GameState.interactionMode === 'move_robber') {
+            html += '<div class="bg-red-800/80 text-white text-xs px-3 py-1 rounded border border-red-600">Click a tile to move the robber</div>';
+        }
+
+        // Action buttons gated by legal_actions
+        if (hasLegalAction('roll_dice')) {
+            html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doRollDice()"><span>&#127922;</span><span>Roll Dice</span></button>';
+        }
+        if (hasLegalAction('build_road')) {
+            const ac = mode === 'place_road' ? ' active' : '';
+            html += '<button class="btn-action' + ac + ' px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="toggleMode(\'place_road\')"><span>&#128739;&#65039;</span><span>Road</span></button>';
+        }
+        if (hasLegalAction('build_settlement')) {
+            const ac = mode === 'place_settlement' ? ' active' : '';
+            html += '<button class="btn-action' + ac + ' px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="toggleMode(\'place_settlement\')"><span>&#127968;</span><span>Settlement</span></button>';
+        }
+        if (hasLegalAction('build_city')) {
+            const ac = mode === 'place_city' ? ' active' : '';
+            html += '<button class="btn-action' + ac + ' px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="toggleMode(\'place_city\')"><span>&#127983;</span><span>City</span></button>';
+        }
+        if (hasLegalAction('buy_development_card')) {
+            html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doBuyDevCard()"><span>&#128220;</span><span>Dev Card</span></button>';
+        }
+        if (hasLegalAction('end_turn')) {
+            html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doEndTurn()"><span>&#8635;</span><span>End Turn</span></button>';
+        }
+
+        // Waiting for other player
+        if (!isMyTurn() && GameState.publicState.phase !== 'FINISHED' && !hasLegalAction('discard_resources')) {
+            const cp = GameState.playerMap[GameState.publicState.turn?.current_player_id];
+            html += '<div class="bg-black/60 text-yellow-300 text-xs px-3 py-1.5 rounded border border-yellow-800">Waiting for ' + (cp?.name || '...') + '...</div>';
+        }
+
+        // Finished
+        if (GameState.publicState.phase === 'FINISHED') {
+            const winner = GameState.publicState.players.reduce((a, b) => a.victory_points > b.victory_points ? a : b);
+            html += '<div class="bg-yellow-700 text-white text-sm px-4 py-2 rounded-lg font-game border-2 border-yellow-400">&#127942; ' + winner.name + ' wins!</div>';
+        }
+
+        el.innerHTML = html;
+    }
+
+    function toggleMode(newMode) {
+        GameState.interactionMode = GameState.interactionMode === newMode ? 'none' : newMode;
+        rebuildScene(); renderActionButtons();
+    }
+
+    async function doRollDice() {
+        const r = await apiCommand('roll_dice');
+        if (r && r.accepted) {
+            GameState.hasRolledThisTurn = true;
+            const ev = r.events?.find(e => e.type === 'dice_rolled');
+            if (ev) showToast('Rolled ' + ev.value + '!', 'info');
+        }
+    }
+
+    async function doBuyDevCard() {
+        const r = await apiCommand('buy_development_card');
+        if (r && r.accepted) {
+            const ev = r.events?.find(e => e.type === 'development_card_bought');
+            showToast('Bought: ' + (ev?.card_type || 'card'), 'success');
+        }
+    }
+
+    async function doEndTurn() {
+        GameState.interactionMode = 'none';
+        await apiCommand('end_turn');
+    }
+
+    function renderGameStatus() {
+        const el = document.getElementById('game-status');
+        if (!GameState.publicState) { el.textContent = ''; return; }
+        const s = GameState.publicState;
+        const phase = s.phase;
+        const turnPhase = s.turn?.turn_phase || '';
+        const roll = s.turn?.last_roll;
+        const turnNum = s.turn?.number || 0;
+
+        let text = 'Phase: ' + phase;
+        if (phase === 'MAIN') text = 'Turn ' + turnNum + ' | ' + turnPhase;
+        if (phase === 'SETUP_1') text = 'Setup Round 1';
+        if (phase === 'SETUP_2') text = 'Setup Round 2';
+        if (phase === 'FINISHED') text = 'Game Over';
+        if (roll) text += ' | Last roll: ' + roll;
+        el.textContent = text;
+    }
+
+    // ======== PENDING MODALS ========
+    function checkPendingModals() {
+        if (!GameState.publicState) return;
+        const pending = GameState.publicState.pending;
+        if (!pending) return;
+
+        // Discard required
+        if (pending.pending_discards && GameState.myPlayerId) {
+            const required = pending.pending_discards[String(GameState.myPlayerId)];
+            if (required && required > 0) {
+                showDiscardDialog(required);
+                return;
+            }
+        }
+
+        // Robber move required
+        if (pending.robber_move_required && isMyTurn()) {
+            GameState.interactionMode = 'move_robber';
+            rebuildScene();
+            renderActionButtons();
+        }
+
+        // Setup pending road
+        if (pending.setup && pending.setup.pending_road_player === GameState.myPlayerId) {
+            GameState.interactionMode = 'place_setup_road';
+            rebuildScene();
+            renderActionButtons();
+        }
+    }
+
+    function showDiscardDialog(requiredCount) {
+        const dialog = document.getElementById('discard-dialog');
+        document.getElementById('discard-info').textContent = 'You must discard ' + requiredCount + ' resource(s).';
+        const res = GameState.privateState?.resources || {};
+        let html = '';
+        for (const key of RESOURCE_ORDER) {
+            const count = res[key] || 0;
+            if (count <= 0) continue;
+            html += '<div class="flex items-center justify-between">'
+                + '<div class="flex items-center space-x-2">'
+                + '<div class="w-5 h-5 rounded-sm border border-black" style="background:' + RESOURCE_COLORS[key] + '"></div>'
+                + '<span class="text-white text-sm">' + RESOURCE_LABELS[key] + ' (' + count + ')</span>'
+                + '</div>'
+                + '<input type="number" min="0" max="' + count + '" value="0" data-resource="' + key + '"'
+                + ' class="w-16 px-2 py-1 rounded bg-[#5d4037] text-white border border-yellow-800 text-center">'
+                + '</div>';
+        }
+        document.getElementById('discard-inputs').innerHTML = html;
+        dialog.dataset.required = requiredCount;
+        dialog.classList.remove('hidden');
+    }
+
+    async function submitDiscard() {
+        const dialog = document.getElementById('discard-dialog');
+        const required = parseInt(dialog.dataset.required);
+        const inputs = dialog.querySelectorAll('input[data-resource]');
+        const resources = {};
+        let total = 0;
+        inputs.forEach(inp => {
+            const val = parseInt(inp.value) || 0;
+            if (val > 0) {
+                resources[inp.dataset.resource.toLowerCase()] = val;
+                total += val;
+            }
+        });
+        if (total !== required) {
+            showToast('Must discard exactly ' + required + ' (selected ' + total + ')', 'error');
+            return;
+        }
+        const result = await apiCommand('discard_resources', { resources });
+        if (result && result.accepted) {
+            dialog.classList.add('hidden');
+            showToast('Resources discarded', 'success');
+        }
+    }
+
+    function showVictimDialog(tileId, victimIds) {
+        const dialog = document.getElementById('victim-dialog');
+        let html = '';
+        for (const vid of victimIds) {
+            const p = GameState.playerMap[vid];
+            const color = PLAYER_COLORS[p?.color] || '#888';
+            html += '<button onclick="selectVictim(' + tileId + ',' + vid + ')" class="w-full py-2 rounded font-bold text-white" style="background:' + color + '">' + (p?.name || 'Player ' + vid) + '</button>';
+        }
+        document.getElementById('victim-buttons').innerHTML = html;
+        dialog.classList.remove('hidden');
+    }
+
+    async function selectVictim(tileId, victimId) {
+        document.getElementById('victim-dialog').classList.add('hidden');
+        const result = await apiCommand('move_robber', { tile_id: tileId, victim_id: victimId });
+        if (result && result.accepted) {
+            const ev = result.events?.find(e => e.type === 'robber_moved');
+            if (ev && ev.stolen_resource) showToast('Stole ' + ev.stolen_resource + '!', 'success');
+        }
+    }
+
+    function hideVictimDialog() {
+        document.getElementById('victim-dialog').classList.add('hidden');
+        if (GameState.pendingRobberTileId !== null) {
+            apiCommand('move_robber', { tile_id: GameState.pendingRobberTileId });
+            GameState.pendingRobberTileId = null;
+        }
+    }
+
+    // ======== GAME CREATION ========
+    function addPlayerInput() {
+        const container = document.getElementById('player-inputs');
+        const count = container.children.length;
+        if (count >= 4) { showToast('Maximum 4 players', 'warning'); return; }
+        const allColors = ['red','blue','white','orange'];
+        const div = document.createElement('div');
+        div.className = 'flex items-center space-x-2';
+        let opts = '';
+        for (const c of allColors) {
+            opts += '<option value="' + c + '"' + (c === allColors[count] ? ' selected' : '') + '>' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>';
+        }
+        div.innerHTML = '<span class="text-white font-bold w-6">' + (count + 1) + '.</span>'
+            + '<input type="text" class="flex-1 px-3 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800 focus:border-yellow-400 outline-none" placeholder="Player name">'
+            + '<select class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">' + opts + '</select>';
+        container.appendChild(div);
+    }
+
+    async function startGame() {
+        const rows = document.querySelectorAll('#player-inputs > div');
+        const players = [];
+        for (const row of rows) {
+            const name = row.querySelector('input').value.trim();
+            const color = row.querySelector('select').value;
+            if (!name) { showToast('All players need names', 'warning'); return; }
+            players.push({ name, color });
+        }
+        if (players.length < 2) { showToast('Need at least 2 players', 'warning'); return; }
+
+        const data = await apiCreateGame(players);
+        if (!data) return;
+
+        GameState.gameId = data.game_id;
+        const myPlayer = data.players[0];
+        GameState.playerToken = myPlayer.token;
+        GameState.myPlayerId = myPlayer.player_id;
+
+        // Update URL for reloading
+        const url = new URL(window.location);
+        url.searchParams.set('game_id', data.game_id);
+        url.searchParams.set('player_token', myPlayer.token);
+        history.replaceState(null, '', url);
+
+        document.getElementById('create-game-dialog').classList.add('hidden');
+
+        // Initial state from create doesn't include private_state, fetch it
+        const fullState = await apiGetState(data.game_id, myPlayer.token);
+        if (fullState) updateState(fullState);
+        else updateState(data.state);
+
+        connectWebSocket(data.game_id);
+
+        // Log all player join URLs for multiplayer testing
+        console.log('=== Game Created ===');
+        console.log('Game ID:', data.game_id);
+        for (const p of data.players) {
+            const joinUrl = new URL(window.location.origin + window.location.pathname);
+            joinUrl.searchParams.set('game_id', data.game_id);
+            joinUrl.searchParams.set('player_token', p.token);
+            console.log(p.name + ' (' + p.color + '): ' + joinUrl.toString());
+        }
+    }
+
+    async function joinGame() {
+        const gameId = document.getElementById('join-game-id').value.trim();
+        const token = document.getElementById('join-token').value.trim();
+        if (!gameId || !token) { showToast('Enter game ID and token', 'warning'); return; }
+        GameState.gameId = gameId;
+        GameState.playerToken = token;
+
+        const state = await apiGetState(gameId, token);
+        if (!state) return;
+
+        const url = new URL(window.location);
+        url.searchParams.set('game_id', gameId);
+        url.searchParams.set('player_token', token);
+        history.replaceState(null, '', url);
+
+        document.getElementById('create-game-dialog').classList.add('hidden');
+        updateState(state);
+        connectWebSocket(gameId);
+    }
+
+    // ======== ANIMATION LOOP ========
+    function animate() {
+        requestAnimationFrame(animate);
+        const time = Date.now() * 0.0012;
+        const positions = oceanPlane.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            const bp = basePositions[i];
+            const wave1 = Math.sin(bp.x * 0.05 + time) * 0.5;
+            const wave2 = Math.sin(bp.z * 0.06 + time * 0.8) * 0.5;
+            const wave3 = Math.sin((bp.x + bp.z) * 0.1 - time * 1.5) * 0.2;
+            positions.setY(i, bp.y + wave1 + wave2 + wave3);
+        }
+        positions.needsUpdate = true;
+        oceanPlane.geometry.computeVertexNormals();
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ======== INITIALIZATION ========
+    async function init() {
+        const params = new URLSearchParams(window.location.search);
+        const gameId = params.get('game_id');
+        const playerToken = params.get('player_token');
+
+        if (gameId && playerToken) {
+            GameState.gameId = gameId;
+            GameState.playerToken = playerToken;
+            document.getElementById('create-game-dialog').classList.add('hidden');
+            const state = await apiGetState(gameId, playerToken);
+            if (state) {
+                updateState(state);
+                connectWebSocket(gameId);
+            } else {
+                document.getElementById('create-game-dialog').classList.remove('hidden');
+                showToast('Could not load game, create a new one', 'error');
+            }
+        }
+    }
+
+    animate();
+    init();
     </script>
 </body>
 </html>
