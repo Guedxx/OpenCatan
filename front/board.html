@@ -58,7 +58,7 @@
             <div class="flex flex-col space-y-2 pointer-events-auto">
                 <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Chat not implemented yet')">&#x1F4AC;</button>
                 <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Emotes not implemented yet')">&#x1F642;</button>
-                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="doPlayerTrade()">&#x1F91D;</button>
+                <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="doProposeTradeOffer()">&#x1F91D;</button>
                 <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Stats not implemented yet')">&#x1F4CA;</button>
                 <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Info not implemented yet')">&#x2139;&#xFE0F;</button>
                 <button class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" onclick="showToast('Rules not implemented yet')">&#x1F4D6;</button>
@@ -193,33 +193,11 @@
         playerMap: {},
         interactionMode: 'none',
         pendingRobberTileId: null,
-        // Track whether current turn has rolled (backend doesn't reset last_roll)
-        lastKnownTurn: null, // {turnNumber, playerId}
-        hasRolledThisTurn: false,
         requestSeq: 0,
     };
 
-    function hasState() {
-        return !!GameState.publicState;
-    }
-
     function playersList() {
         return GameState.publicState?.players || [];
-    }
-
-    function allPlayersHavePieces(minSettlements, minRoads) {
-        return playersList().every(p => (p.settlements || []).length >= minSettlements && (p.roads || []).length >= minRoads);
-    }
-
-    function isLegacySetupComplete() {
-        const phase = GameState.publicState?.phase;
-        if (phase !== 'SETUP_1' && phase !== 'SETUP_2') return false;
-        return allPlayersHavePieces(2, 2);
-    }
-
-    function effectivePhase() {
-        if (!hasState()) return null;
-        return isLegacySetupComplete() ? 'MAIN' : GameState.publicState.phase;
     }
 
     function updateState(envelope) {
@@ -234,23 +212,6 @@
         if (GameState.publicState && GameState.publicState.players) {
             for (const p of GameState.publicState.players) {
                 GameState.playerMap[p.id] = p;
-            }
-        }
-        // Detect turn change to reset roll tracking
-        const turn = GameState.publicState?.turn;
-        if (turn) {
-            const turnKey = turn.number + '-' + turn.current_player_id;
-            if (GameState.lastKnownTurn !== turnKey) {
-                GameState.lastKnownTurn = turnKey;
-                GameState.hasRolledThisTurn = false;
-            }
-            // If last_roll changed and it's our turn, mark as rolled
-            if (turn.last_roll !== null && turn.last_roll !== undefined && isMyTurn()) {
-                // Compare with previous: if we just got state and last_roll exists,
-                // and we haven't tracked a roll yet, infer it happened
-                if (!GameState.hasRolledThisTurn && GameState.publicState.phase === 'MAIN') {
-                    GameState.hasRolledThisTurn = true;
-                }
             }
         }
         GameState.interactionMode = 'none';
@@ -873,7 +834,7 @@
     }
 
     function isSetupPhase() {
-        const phase = effectivePhase();
+        const phase = GameState.publicState?.phase;
         return phase === 'SETUP_1' || phase === 'SETUP_2';
     }
 
@@ -882,72 +843,7 @@
     }
 
     function getLegalActions() {
-        // Use server-provided legal_actions if available (per contract)
-        if (GameState.privateState?.legal_actions) {
-            return GameState.privateState.legal_actions;
-        }
-        // Otherwise infer from current state
-        return inferLegalActions();
-    }
-
-    function inferLegalActions() {
-        const s = GameState.publicState;
-        if (!s) return [];
-        const phase = effectivePhase();
-        if (phase === 'FINISHED') return [];
-        const actions = [];
-        const myTurn = isMyTurn();
-
-        // Check pending states (if backend provides them)
-        const pending = s.pending;
-        if (pending) {
-            if (pending.pending_discards) {
-                const req = pending.pending_discards[String(GameState.myPlayerId)];
-                if (req && req > 0) return ['discard_resources'];
-            }
-            if (pending.robber_move_required && myTurn) return ['move_robber'];
-        }
-
-        if (!myTurn) return actions;
-
-        if (phase === 'SETUP_1' || phase === 'SETUP_2') {
-            // Infer setup state from player piece counts
-            const me = GameState.playerMap[GameState.myPlayerId];
-            if (!me) return actions;
-            const numSettlements = (me.settlements || []).length;
-            const numRoads = (me.roads || []).length;
-            if (numSettlements > numRoads) {
-                // Placed settlement, need road
-                actions.push('place_setup_road');
-            } else {
-                // Need settlement (or done with both -> end_turn)
-                const expectedPairs = phase === 'SETUP_1' ? 1 : 2;
-                if (numSettlements >= expectedPairs && numRoads >= expectedPairs) {
-                    actions.push('end_turn');
-                } else {
-                    actions.push('place_setup_settlement');
-                }
-            }
-            return actions;
-        }
-
-        if (phase === 'MAIN') {
-            if (!GameState.hasRolledThisTurn) {
-                actions.push('roll_dice');
-            } else {
-                actions.push(
-                    'build_road',
-                    'build_settlement',
-                    'build_city',
-                    'buy_development_card',
-                    'play_development_card',
-                    'trade_bank',
-                    'trade_player',
-                    'end_turn'
-                );
-            }
-        }
-        return actions;
+        return GameState.privateState?.legal_actions || [];
     }
 
     function hasLegalAction(action) {
@@ -1028,7 +924,7 @@
         if (!GameState.publicState) { el.innerHTML = ''; return; }
 
         const mode = GameState.interactionMode;
-        const phase = effectivePhase() || GameState.publicState.phase;
+        const phase = GameState.publicState.phase;
         let html = '';
 
         // Auto-enter setup placement
@@ -1076,8 +972,8 @@
         if (hasLegalAction('trade_bank')) {
             html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doBankTrade()"><span>&#128176;</span><span>Bank Trade</span></button>';
         }
-        if (hasLegalAction('trade_player')) {
-            html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doPlayerTrade()"><span>&#x1F91D;</span><span>Player Trade</span></button>';
+        if (hasLegalAction('propose_trade_offer')) {
+            html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doProposeTradeOffer()"><span>&#x1F91D;</span><span>Offer Trade</span></button>';
         }
         if (hasLegalAction('end_turn')) {
             html += '<button class="btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" onclick="doEndTurn()"><span>&#8635;</span><span>End Turn</span></button>';
@@ -1106,7 +1002,6 @@
     async function doRollDice() {
         const r = await apiCommand('roll_dice');
         if (r && r.accepted) {
-            GameState.hasRolledThisTurn = true;
             const ev = r.events?.find(e => e.type === 'dice_rolled');
             if (ev) showToast('Rolled ' + ev.value + '!', 'info');
         }
@@ -1120,9 +1015,9 @@
         }
     }
 
-    async function doPlayerTrade() {
-        if (!hasLegalAction('trade_player')) {
-            showToast('Player trade not available right now', 'warning');
+    async function doProposeTradeOffer() {
+        if (!hasLegalAction('propose_trade_offer')) {
+            showToast('Trade offer not available right now', 'warning');
             return;
         }
         const others = playersList().filter(p => p.id !== GameState.myPlayerId);
@@ -1131,13 +1026,13 @@
             return;
         }
         const target = others[0];
-        const result = await apiCommand('trade_player', {
+        const result = await apiCommand('propose_trade_offer', {
             to_player_id: target.id,
             give: { brick: 1 },
             receive: { wool: 1 }
         });
         if (result && result.accepted) {
-            showToast('Traded with ' + target.name, 'success');
+            showToast('Trade offer sent to ' + target.name, 'success');
         }
     }
 
@@ -1164,7 +1059,7 @@
         const el = document.getElementById('game-status');
         if (!GameState.publicState) { el.textContent = ''; return; }
         const s = GameState.publicState;
-        const phase = effectivePhase() || s.phase;
+        const phase = s.phase;
         const turnPhase = s.turn?.turn_phase || '';
         const roll = s.turn?.last_roll;
         const turnNum = s.turn?.number || 0;
@@ -1183,6 +1078,14 @@
         if (!GameState.publicState) return;
         const pending = GameState.publicState.pending;
         if (!pending) return;
+
+        if (pending.pending_trade_offer) {
+            const offer = pending.pending_trade_offer;
+            if (offer.to_player_id === GameState.myPlayerId && hasLegalAction('respond_trade_offer')) {
+                showTradeOfferDialog(offer);
+                return;
+            }
+        }
 
         // Discard required
         if (pending.pending_discards && GameState.myPlayerId) {
@@ -1281,6 +1184,14 @@
             apiCommand('move_robber', { tile_id: GameState.pendingRobberTileId });
             GameState.pendingRobberTileId = null;
         }
+    }
+
+    function showTradeOfferDialog(offer) {
+        const from = GameState.playerMap[offer.from_player_id];
+        const giveText = Object.entries(offer.give || {}).map(([k, v]) => `${v} ${k}`).join(', ');
+        const receiveText = Object.entries(offer.receive || {}).map(([k, v]) => `${v} ${k}`).join(', ');
+        const accept = window.confirm(`${from?.name || 'Player'} offers ${giveText} for ${receiveText}. Accept?`);
+        apiCommand('respond_trade_offer', { offer_id: offer.id, accept });
     }
 
     // ======== GAME CREATION ========
