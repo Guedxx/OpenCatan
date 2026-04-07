@@ -116,6 +116,11 @@ async def execute_command(game_id: str, request: CommandRequest) -> CommandRespo
         raise HTTPException(status_code=404, detail="Game not found") from exc
 
     try:
+        player_id = session.player_id_from_token(request.player_token)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Invalid player token") from exc
+
+    try:
         result = session.execute(
             player_token=request.player_token,
             command=request.command,
@@ -139,7 +144,6 @@ async def execute_command(game_id: str, request: CommandRequest) -> CommandRespo
             events=result.get("events", []),
         )
 
-    player_id = session.player_id_from_token(request.player_token)
     state = build_state_envelope(
         game_id=game_id,
         version=session.version,

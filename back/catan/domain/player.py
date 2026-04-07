@@ -19,6 +19,15 @@ class Player:
     has_longest_road: bool = False
     has_largest_army: bool = False
 
+    def road_count(self) -> int:
+        return len(self.road_ids)
+
+    def settlement_count(self) -> int:
+        return len(self.settlement_vertex_ids)
+
+    def city_count(self) -> int:
+        return len(self.city_vertex_ids)
+
     def victory_points(self) -> int:
         points = len(self.settlement_vertex_ids) + 2 * len(self.city_vertex_ids)
         if self.has_longest_road:

@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from .enums import DevelopmentCardType, PortType, ResourceType
+from .enums import DevelopmentCardType, GamePhase, PortType, ResourceType
+
+if TYPE_CHECKING:
+    from .game import CatanGame
+    from .player import Player
 
 
 @dataclass
 class RuleEngine:
     def validate_road_placement(
-        self, game: object, player_id: int, edge_id: int, setup_phase: bool = False
+        self,
+        game: "CatanGame",
+        player_id: int,
+        edge_id: int,
+        setup_phase: bool = False,
     ) -> bool:
         return game.board.can_place_road(
             player_id=player_id, edge_id=edge_id, setup_phase=setup_phase
@@ -16,7 +25,7 @@ class RuleEngine:
 
     def validate_settlement_placement(
         self,
-        game: object,
+        game: "CatanGame",
         player_id: int,
         vertex_id: int,
         setup_phase: bool = False,
@@ -26,13 +35,13 @@ class RuleEngine:
         )
 
     def validate_city_upgrade(
-        self, game: object, player_id: int, vertex_id: int
+        self, game: "CatanGame", player_id: int, vertex_id: int
     ) -> bool:
         return game.board.can_upgrade_to_city(player_id=player_id, vertex_id=vertex_id)
 
     def validate_bank_trade(
         self,
-        game: object,
+        game: "CatanGame",
         player_id: int,
         give: dict[ResourceType, int],
         receive: dict[ResourceType, int],
@@ -59,18 +68,29 @@ class RuleEngine:
 
     def validate_dev_card_play(
         self,
-        game: object,
+        game: "CatanGame",
         player_id: int,
         card_type: DevelopmentCardType,
     ) -> bool:
         player = game.player_by_id(player_id)
-        return card_type in player.dev_cards_hand
+        if game.phase != GamePhase.MAIN:
+            return False
+        if card_type not in player.dev_cards_hand:
+            return False
+        hand_count = sum(1 for card in player.dev_cards_hand if card == card_type)
+        new_this_turn = sum(
+            1 for card in game.new_dev_cards_this_turn if card == card_type
+        )
+        return hand_count > new_this_turn
 
-    def discard_required(self, player: object) -> bool:
+    def discard_required(self, player: "Player") -> bool:
         return player.resource_count() > 7
 
     def robber_victims(
-        self, game: object, tile_id: int, acting_player_id: int | None = None
+        self,
+        game: "CatanGame",
+        tile_id: int,
+        acting_player_id: int | None = None,
     ) -> list[int]:
         victims: set[int] = set()
         tile = game.board.tiles[tile_id]
@@ -84,7 +104,10 @@ class RuleEngine:
         return sorted(victims)
 
     def _best_trade_ratio(
-        self, game: object, player_id: int, give_resource: ResourceType
+        self,
+        game: "CatanGame",
+        player_id: int,
+        give_resource: ResourceType,
     ) -> int:
         player = game.player_by_id(player_id)
         ratios = [4]

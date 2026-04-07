@@ -9,7 +9,6 @@ from catan.api.schemas import CommandType
 from catan.domain.enums import DevelopmentCardType, ResourceType
 from catan.domain.game import CatanGame
 from catan.domain.player import Player
-from catan.domain.trade import TradeOffer
 
 
 def _default_colors() -> list[str]:
@@ -28,6 +27,13 @@ def _development_card_type(name: str) -> DevelopmentCardType:
         return DevelopmentCardType[name.upper()]
     except KeyError as exc:
         raise ValueError(f"Unknown development card type {name}") from exc
+
+
+def _resource_bundle(data: dict[str, Any]) -> dict[ResourceType, int]:
+    bundle: dict[ResourceType, int] = {}
+    for resource_name, amount in data.items():
+        bundle[_resource_type(resource_name)] = int(amount)
+    return bundle
 
 
 @dataclass
@@ -54,6 +60,7 @@ class GameSession:
     ) -> dict[str, Any]:
         with self.lock:
             player_id = self.player_id_from_token(player_token)
+
             if expected_version is not None and expected_version != self.version:
                 return {
                     "accepted": False,
@@ -81,16 +88,16 @@ class GameSession:
             return result
 
     def _apply_command(
-        self, player_id: int, command: CommandType, payload: dict[str, Any]
+        self,
+        player_id: int,
+        command: CommandType,
+        payload: dict[str, Any],
     ) -> list[dict[str, Any]]:
-        if player_id != self.game.current_player().id and command not in {
-            CommandType.TRADE_PLAYER
-        }:
-            raise ValueError("Only current player can perform this command")
-
         events: list[dict[str, Any]] = []
 
         if command == CommandType.PLACE_SETUP_SETTLEMENT:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can place setup settlement")
             vertex_id = int(payload["vertex_id"])
             self.game.build_settlement(
                 player_id, vertex_id, setup_phase=True, pay_cost=False
@@ -104,6 +111,8 @@ class GameSession:
             )
 
         elif command == CommandType.PLACE_SETUP_ROAD:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can place setup road")
             edge_id = int(payload["edge_id"])
             self.game.build_road(player_id, edge_id, setup_phase=True, pay_cost=False)
             events.append(
@@ -114,19 +123,42 @@ class GameSession:
                 }
             )
 
+        elif command == CommandType.DISCARD_RESOURCES:
+            resources = _resource_bundle(payload.get("resources", {}))
+            self.game.discard_resources(player_id, resources)
+            events.append(
+                {
+                    "type": "resources_discarded",
+                    "player_id": player_id,
+                    "total": sum(resources.values()),
+                }
+            )
+
         elif command == CommandType.ROLL_DICE:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can roll dice")
             roll = self.game.roll_dice()
             events.append(
                 {"type": "dice_rolled", "player_id": player_id, "value": roll}
             )
+            if roll == 7 and self.game.pending_discards:
+                events.append(
+                    {
+                        "type": "discard_required",
+                        "pending_discards": dict(self.game.pending_discards),
+                    }
+                )
 
         elif command == CommandType.MOVE_ROBBER:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can move robber")
             tile_id = int(payload["tile_id"])
             victim_id = payload.get("victim_id")
             stolen = self.game.move_robber(
                 player_id=player_id,
                 tile_id=tile_id,
                 victim_id=int(victim_id) if victim_id is not None else None,
+                from_robber_roll=True,
             )
             events.append(
                 {
@@ -139,6 +171,8 @@ class GameSession:
             )
 
         elif command == CommandType.BUILD_ROAD:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can build road")
             edge_id = int(payload["edge_id"])
             self.game.build_road(player_id, edge_id)
             events.append(
@@ -146,6 +180,8 @@ class GameSession:
             )
 
         elif command == CommandType.BUILD_SETTLEMENT:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can build settlement")
             vertex_id = int(payload["vertex_id"])
             self.game.build_settlement(player_id, vertex_id)
             events.append(
@@ -157,6 +193,8 @@ class GameSession:
             )
 
         elif command == CommandType.BUILD_CITY:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can build city")
             vertex_id = int(payload["vertex_id"])
             self.game.build_city(player_id, vertex_id)
             events.append(
@@ -164,6 +202,8 @@ class GameSession:
             )
 
         elif command == CommandType.BUY_DEV_CARD:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can buy development card")
             card = self.game.buy_development_card(player_id)
             events.append(
                 {
@@ -174,6 +214,8 @@ class GameSession:
             )
 
         elif command == CommandType.PLAY_DEV_CARD:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can play development card")
             card_type = _development_card_type(str(payload["card_type"]))
             args = payload.get("args", {})
             if "resource" in args and isinstance(args["resource"], str):
@@ -190,42 +232,60 @@ class GameSession:
             )
 
         elif command == CommandType.TRADE_BANK:
-            give = {
-                _resource_type(resource_name): int(amount)
-                for resource_name, amount in payload["give"].items()
-            }
-            receive = {
-                _resource_type(resource_name): int(amount)
-                for resource_name, amount in payload["receive"].items()
-            }
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can trade with bank")
+            give = _resource_bundle(payload["give"])
+            receive = _resource_bundle(payload["receive"])
             self.game.trade_with_bank(player_id, give, receive)
             events.append({"type": "bank_trade", "player_id": player_id})
 
-        elif command == CommandType.TRADE_PLAYER:
-            give = {
-                _resource_type(resource_name): int(amount)
-                for resource_name, amount in payload["give"].items()
-            }
-            receive = {
-                _resource_type(resource_name): int(amount)
-                for resource_name, amount in payload["receive"].items()
-            }
-            offer = TradeOffer(
+        elif command == CommandType.PROPOSE_TRADE_OFFER:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can propose trade")
+            give = _resource_bundle(payload["give"])
+            receive = _resource_bundle(payload["receive"])
+            offer = self.game.propose_trade_offer(
                 from_player_id=player_id,
                 to_player_id=int(payload["to_player_id"]),
                 give=give,
                 receive=receive,
             )
-            self.game.trade_with_player(offer)
             events.append(
                 {
-                    "type": "player_trade",
+                    "type": "trade_offer_proposed",
+                    "offer_id": offer.id,
                     "from_player_id": offer.from_player_id,
                     "to_player_id": offer.to_player_id,
                 }
             )
 
+        elif command == CommandType.RESPOND_TRADE_OFFER:
+            offer_id = str(payload["offer_id"])
+            accept = bool(payload["accept"])
+            accepted = self.game.respond_trade_offer(player_id, offer_id, accept)
+            events.append(
+                {
+                    "type": "trade_offer_responded",
+                    "offer_id": offer_id,
+                    "player_id": player_id,
+                    "accepted": accepted,
+                }
+            )
+
+        elif command == CommandType.CANCEL_TRADE_OFFER:
+            offer_id = str(payload["offer_id"])
+            self.game.cancel_trade_offer(player_id, offer_id)
+            events.append(
+                {
+                    "type": "trade_offer_cancelled",
+                    "offer_id": offer_id,
+                    "player_id": player_id,
+                }
+            )
+
         elif command == CommandType.END_TURN:
+            if not self.game.is_current_player(player_id):
+                raise ValueError("Only current player can end turn")
             self.game.end_turn()
             events.append({"type": "turn_ended", "player_id": player_id})
 
@@ -273,7 +333,3 @@ class InMemoryGameStore:
         if game_id not in self._sessions:
             raise KeyError(game_id)
         return self._sessions[game_id]
-
-
-def random_session_id() -> str:
-    return uuid.uuid4().hex

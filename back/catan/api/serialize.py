@@ -97,6 +97,33 @@ def game_public_state(game: CatanGame) -> dict[str, Any]:
             },
             "dev_cards_remaining": game.dev_deck.remaining(),
         },
+        "pending": {
+            "pending_discards": dict(game.pending_discards),
+            "robber_move_required": game.robber_move_required,
+            "pending_trade_offer": (
+                None
+                if game.pending_trade_offer is None
+                else {
+                    "id": game.pending_trade_offer.id,
+                    "from_player_id": game.pending_trade_offer.from_player_id,
+                    "to_player_id": game.pending_trade_offer.to_player_id,
+                    "give": {
+                        resource.name: amount
+                        for resource, amount in game.pending_trade_offer.give.items()
+                    },
+                    "receive": {
+                        resource.name: amount
+                        for resource, amount in game.pending_trade_offer.receive.items()
+                    },
+                }
+            ),
+            "setup": {
+                "round": game.setup_round,
+                "order": list(game.setup_order),
+                "index": game.setup_index,
+                "pending_setup_road_player_id": game.pending_setup_road_player_id,
+            },
+        },
     }
 
 
@@ -108,6 +135,8 @@ def game_private_state(game: CatanGame, player_id: int) -> dict[str, Any]:
             resource.name: count for resource, count in player.resources.items()
         },
         "dev_cards": [card.name for card in player.dev_cards_hand],
+        "new_dev_cards_this_turn": [card.name for card in game.new_dev_cards_this_turn],
+        "legal_actions": sorted(game.legal_actions_for_player(player_id)),
     }
 
 

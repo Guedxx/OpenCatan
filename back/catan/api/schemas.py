@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class CommandType(str, Enum):
     PLACE_SETUP_SETTLEMENT = "place_setup_settlement"
     PLACE_SETUP_ROAD = "place_setup_road"
+    DISCARD_RESOURCES = "discard_resources"
     ROLL_DICE = "roll_dice"
     MOVE_ROBBER = "move_robber"
     BUILD_ROAD = "build_road"
@@ -17,7 +18,9 @@ class CommandType(str, Enum):
     BUY_DEV_CARD = "buy_development_card"
     PLAY_DEV_CARD = "play_development_card"
     TRADE_BANK = "trade_bank"
-    TRADE_PLAYER = "trade_player"
+    PROPOSE_TRADE_OFFER = "propose_trade_offer"
+    RESPOND_TRADE_OFFER = "respond_trade_offer"
+    CANCEL_TRADE_OFFER = "cancel_trade_offer"
     END_TURN = "end_turn"
 
 
