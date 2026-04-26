@@ -347,7 +347,10 @@ Player tokens are **never** included in room state payloads.
   - `room_snapshot` — full room state on connect and in response to
     client `snapshot` requests.
   - `room_updated` — broadcast on any state mutation.
-  - `game_started` — broadcast when the host presses Start.
+  - `game_started` — broadcast when the host presses Start. Also
+    re-sent to any socket that connects *after* Start (refresh /
+    reconnect / late tab) immediately after its `room_snapshot`, so a
+    reconnecting player can still discover their `game_token`.
     - Payload: `{ "game_id": "...", "tokens": { "<lobby_token>": "<game_token>" } }`
     - Clients look up their own `game_token` and transition into the
       game via the existing `/ws/games/{game_id}` flow.

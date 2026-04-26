@@ -213,3 +213,38 @@ def test_ws_unknown_room_closes_4404() -> None:
         with pytest.raises(WebSocketDisconnect) as excinfo:
             ws.receive_json()
         assert excinfo.value.code == 4404
+
+
+def test_ws_connect_after_start_replays_game_started() -> None:
+    """A socket that opens *after* the host pressed Start must still be
+    told the game has started and receive the lobby->game token map, or
+    reconnecting players would be stuck in the lobby forever."""
+    client = TestClient(app)
+    host = _create_room(client)
+    room_id = host["room"]["room_id"]
+    host_token = host["player_token"]
+
+    joined = client.post(
+        f"/rooms/{room_id}/join", json={"name": "Bob", "color": "blue"}
+    ).json()
+    client.post(
+        f"/rooms/{room_id}/ready",
+        json={"player_token": joined["player_token"], "ready": True},
+    )
+    start = client.post(
+        f"/rooms/{room_id}/start", json={"player_token": host_token}
+    ).json()
+
+    # Guest reconnects (e.g. refreshed the tab) *after* Start fired.
+    with client.websocket_connect(f"/ws/rooms/{room_id}") as ws:
+        snapshot = ws.receive_json()
+        assert snapshot["type"] == "room_snapshot"
+        assert snapshot["payload"]["game_id"] == start["game_id"]
+
+        replay = ws.receive_json()
+        assert replay["type"] == "game_started"
+        assert replay["payload"]["game_id"] == start["game_id"]
+        # Both lobby tokens must be present so each client can resolve its own.
+        tokens = replay["payload"]["tokens"]
+        assert host_token in tokens
+        assert joined["player_token"] in tokens

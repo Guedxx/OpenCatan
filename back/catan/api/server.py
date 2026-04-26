@@ -422,6 +422,21 @@ async def room_ws(room_id: str, websocket: WebSocket) -> None:
         await websocket.send_json(
             {"type": "room_snapshot", "payload": _room_state(room).model_dump()}
         )
+        # If the game has already started by the time this socket connected
+        # (refresh / reconnect / late-opened tab), replay the game_started
+        # payload so the client can look up its own game_token and move on
+        # to /ws/games/{game_id}. Without this, reconnecting players stay
+        # stuck in the lobby forever.
+        if room.game_id is not None:
+            await websocket.send_json(
+                {
+                    "type": "game_started",
+                    "payload": {
+                        "game_id": room.game_id,
+                        "tokens": dict(room.lobby_to_game_token),
+                    },
+                }
+            )
         while True:
             raw = await websocket.receive_text()
             try:
