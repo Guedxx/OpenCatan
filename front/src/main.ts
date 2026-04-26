@@ -102,18 +102,33 @@ async function init(): Promise<void> {
   if (active) {
     try {
       const room = await apiGetRoom(active.room_id);
-      const me = room.players.find(
-        (p) => p.is_host === active.is_host && !!p, // naive; backend doesn't expose tokens on peek
-      );
-      // We can't verify the exact slot without exposing tokens; trust the
-      // stored is_host flag. Identify ourselves heuristically by host flag
-      // + find best match for display (color/name). On mismatch, the WS
-      // will still receive our updates and the Ready/Color controls will
-      // fall back to server rejection.
+      // Backend never exposes player tokens on /rooms/{id}, so we match
+      // our slot using the identity hints captured at save time. Colors
+      // are unique per room (backend enforced) — that's the authoritative
+      // match. Name is a tiebreaker if the stored color is stale for any
+      // reason (e.g. partially-applied color change). Only after both
+      // fail do we fall back to the ambiguous is_host flag, which is
+      // only uniquely identifying for the host slot.
+      const byColor = active.color
+        ? room.players.find((p) => p.color === active.color)
+        : undefined;
+      const byName = active.name
+        ? room.players.find((p) => p.name === active.name)
+        : undefined;
+      const byHost = active.is_host
+        ? room.players.find((p) => p.is_host)
+        : undefined;
+      const me = byColor ?? byName ?? byHost;
+      // On a total miss we still transition into the lobby so the user
+      // isn't stranded — guest controls will re-sync from the next
+      // room_updated frame, and illegal actions are server-rejected.
       const fallback: { name: string; color: PlayerColor } =
         me !== undefined
           ? { name: me.name, color: me.color as PlayerColor }
-          : { name: "Player", color: "red" };
+          : {
+              name: active.name ?? "Player",
+              color: (active.color as PlayerColor) ?? "red",
+            };
       if (active.is_host) {
         resumeAsHost({
           roomId: room.room_id,

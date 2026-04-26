@@ -137,6 +137,15 @@ async function changeMyColor(color: PlayerColor): Promise<void> {
     const room = await apiChangeColor(state.roomId, state.playerToken, color);
     state.color = color;
     state.room = room;
+    // Keep the persisted identity in sync so a reload can still match
+    // our slot by color after the change.
+    saveActiveRoom({
+      room_id: state.roomId,
+      player_token: state.playerToken,
+      is_host: true,
+      name: state.name,
+      color: state.color,
+    });
     renderLobby();
   } catch (err) {
     if (err instanceof LobbyApiError) {
@@ -166,7 +175,13 @@ async function createRoomClick(): Promise<void> {
     state.roomId = room.room_id;
     state.playerToken = player_token;
     state.room = room;
-    saveActiveRoom({ room_id: room.room_id, player_token, is_host: true });
+    saveActiveRoom({
+      room_id: room.room_id,
+      player_token,
+      is_host: true,
+      name,
+      color,
+    });
     attachWs();
     renderLobby();
     showScreen("mp-lobby-host");

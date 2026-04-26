@@ -147,6 +147,15 @@ async function changeMyColor(color: PlayerColor): Promise<void> {
     const room = await apiChangeColor(state.roomId, state.playerToken, color);
     state.color = color;
     state.room = room;
+    // Keep the persisted identity in sync so a reload can still match
+    // our slot by color after the change.
+    saveActiveRoom({
+      room_id: state.roomId,
+      player_token: state.playerToken,
+      is_host: false,
+      name: state.name,
+      color: state.color,
+    });
     renderLobby();
   } catch (err) {
     if (err instanceof LobbyApiError) {
@@ -226,7 +235,13 @@ async function joinRoomClick(): Promise<void> {
     state.playerToken = player_token;
     state.room = room;
     state.handedOff = false;
-    saveActiveRoom({ room_id: room.room_id, player_token, is_host: false });
+    saveActiveRoom({
+      room_id: room.room_id,
+      player_token,
+      is_host: false,
+      name,
+      color,
+    });
     attachWs();
     renderLobby();
     showScreen("mp-lobby-guest");
@@ -315,6 +330,8 @@ function promoteToHost(
     room_id: payload.roomId,
     player_token: payload.playerToken,
     is_host: true,
+    name: identity.name,
+    color: identity.color,
   });
 
   // Clear guest-local state so a later re-entry starts from scratch.

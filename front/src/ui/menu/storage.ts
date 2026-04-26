@@ -52,6 +52,14 @@ export interface ActiveRoom {
   room_id: string;
   player_token: string;
   is_host: boolean;
+  // Identity hints captured at save time so a reload can match the
+  // correct slot even when multiple guests share `is_host = false`.
+  // Optional for backward compatibility with records saved before this
+  // field existed. `color` is authoritative (backend enforces unique
+  // colors per room); `name` is a tiebreaker if the stored color is
+  // stale for any reason.
+  name?: string;
+  color?: string;
 }
 
 export function loadActiveRoom(): ActiveRoom | null {
