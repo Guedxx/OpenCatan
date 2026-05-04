@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { HEX_SIZE } from "../config";
 import { fpsFrame } from "../ui/fpsCounter";
 import { pointInConvexPoly } from "./flora/pasture";
+import { animateDiceRoller } from "./diceRoller";
 import {
   OCEAN_FADE_RANGE,
   OCEAN_FADE_START,
@@ -318,6 +319,7 @@ export function animate(): void {
   if (hoverTokenPivot.visible) {
     hoverTokenPivot.rotation.y += 0.025;
   }
+  animateDiceRoller(nowMs);
   renderer.render(scene, camera);
   fpsFrame(nowMs);
 }

@@ -88,6 +88,7 @@ Shape:
   - `current_player_id`
   - `turn_phase`: `ROLL | TRADE | BUILD | END`
   - `last_roll`
+  - `last_roll_dice`: `[die1, die2] | null`
 - `board`:
   - `robber_tile_id`
   - `tiles[]`: `id`, `resource`, `number_token`, `vertex_ids[6]`, `edge_ids[6]`, `has_robber`
@@ -98,7 +99,8 @@ Shape:
   - `id`, `name`, `color`
   - `resource_count`, `dev_card_count`
   - `roads`, `settlements`, `cities`
-  - `victory_points`, `played_knights`, `has_longest_road`, `has_largest_army`
+  - `victory_points` (publicly visible points; hidden VP cards are excluded until game end)
+  - `played_knights`, `has_longest_road`, `has_largest_army`
 - `bank`: resource counts + dev cards remaining
 - `pending`:
   - `pending_discards` (map `player_id -> required_count`)
@@ -112,6 +114,7 @@ Shape:
 - `resources` (exact hand by resource)
 - `dev_cards` (exact cards)
 - `new_dev_cards_this_turn` (unplayable this turn)
+- `victory_points` (this player's true total, including hidden VP cards)
 - `legal_actions` (authoritative UI enablement)
 
 Frontend should gate buttons/actions from `legal_actions` first.

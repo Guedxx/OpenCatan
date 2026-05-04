@@ -62,6 +62,18 @@ def test_roll_7_requires_discard_and_robber_move() -> None:
     assert game.robber_move_required is False
 
 
+def test_roll_records_individual_dice_values() -> None:
+    game = _game()
+    _finish_setup(game)
+
+    rolled = game.roll_dice()
+
+    assert game.last_roll_dice is not None
+    assert len(game.last_roll_dice) == 2
+    assert all(1 <= value <= 6 for value in game.last_roll_dice)
+    assert sum(game.last_roll_dice) == rolled
+
+
 def test_dev_card_cannot_be_played_if_bought_this_turn() -> None:
     game = _game()
     _finish_setup(game)

@@ -94,6 +94,7 @@ export interface Turn {
   current_player_id: number | null;
   turn_phase: TurnPhase | string;
   last_roll: number | null;
+  last_roll_dice?: [number, number] | number[] | null;
 }
 
 export interface TradeOffer {
@@ -149,6 +150,7 @@ export interface PrivateState {
   resources: Record<string, number>;
   dev_cards: Record<string, number> | string[];
   new_dev_cards_this_turn?: Record<string, number> | string[];
+  victory_points?: number;
   legal_actions: LegalAction[];
 }
 
@@ -217,7 +219,9 @@ export type InteractionMode =
   | "place_road"
   | "place_setup_road"
   | "place_city"
-  | "move_robber";
+  | "move_robber"
+  | "play_knight"
+  | "play_road_building";
 
 // ---- Positions computed from the board graph ----
 

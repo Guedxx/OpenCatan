@@ -29,15 +29,19 @@ class Player:
         return len(self.city_vertex_ids)
 
     def victory_points(self) -> int:
+        points = self.visible_victory_points()
+        vp_cards = sum(
+            1 for c in self.dev_cards_hand if c == DevelopmentCardType.VICTORY_POINT
+        )
+        return points + vp_cards
+
+    def visible_victory_points(self) -> int:
         points = len(self.settlement_vertex_ids) + 2 * len(self.city_vertex_ids)
         if self.has_longest_road:
             points += 2
         if self.has_largest_army:
             points += 2
-        vp_cards = sum(
-            1 for c in self.dev_cards_hand if c == DevelopmentCardType.VICTORY_POINT
-        )
-        return points + vp_cards
+        return points
 
     def resource_count(self) -> int:
         return sum(self.resources.values())

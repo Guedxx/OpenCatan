@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 from catan.services.board_factory import BoardFactory
@@ -45,6 +47,7 @@ class CatanGame:
     phase: GamePhase = GamePhase.SETUP_1
     current_player_index: int = 0
     last_roll: int | None = None
+    last_roll_dice: tuple[int, int] | None = None
 
     setup_round: int = 1
     initial_player_order: list[int] = field(default_factory=list)
@@ -80,6 +83,7 @@ class CatanGame:
         self.turn_manager.turn_number = 1
         self.turn_manager.turn_phase = TurnPhase.BUILD
         self.last_roll = None
+        self.last_roll_dice = None
 
         self.rolled_this_turn = False
         self.robber_move_required = False
@@ -162,6 +166,7 @@ class CatanGame:
 
         roll = self.dice.roll()
         self.last_roll = roll
+        self.last_roll_dice = self.dice.last_values
         self.rolled_this_turn = True
         self.turn_manager.turn_phase = TurnPhase.TRADE
 
@@ -213,6 +218,7 @@ class CatanGame:
         self.turn_manager.turn_number += 1
         self.turn_manager.turn_phase = TurnPhase.ROLL
         self.last_roll = None
+        self.last_roll_dice = None
         self.rolled_this_turn = False
         self.robber_move_required = False
         self.pending_discards.clear()
@@ -329,11 +335,13 @@ class CatanGame:
         if not self.rules.validate_dev_card_play(self, player_id, card_type):
             raise ValueError("Cannot play this development card")
 
+        payload = args or {}
+        self._validate_development_card_effect(player_id, card_type, payload)
+
         player = self.player_by_id(player_id)
         player.dev_cards_hand.remove(card_type)
         self.played_non_vp_dev_this_turn = True
 
-        payload = args or {}
         if card_type == DevelopmentCardType.KNIGHT:
             player.played_knights += 1
             self.move_robber(
@@ -345,24 +353,15 @@ class CatanGame:
             self.achievements.update_largest_army(self.players)
         elif card_type == DevelopmentCardType.ROAD_BUILDING:
             edges = payload.get("edge_ids", [])
-            if len(edges) != 2:
-                raise ValueError("ROAD_BUILDING requires two edge ids")
             self.build_road(player_id, int(edges[0]), pay_cost=False)
             self.build_road(player_id, int(edges[1]), pay_cost=False)
         elif card_type == DevelopmentCardType.YEAR_OF_PLENTY:
             resources = payload.get("resources", [])
-            if len(resources) != 2:
-                raise ValueError("YEAR_OF_PLENTY requires two resources")
-            for resource in resources:
-                if not self.bank.can_pay(resource, 1):
-                    raise ValueError("Bank cannot satisfy YEAR_OF_PLENTY")
             for resource in resources:
                 self.bank.pay(resource, 1)
                 player.add_resource(resource, 1)
         elif card_type == DevelopmentCardType.MONOPOLY:
             resource = payload.get("resource")
-            if resource is None:
-                raise ValueError("MONOPOLY requires a resource")
             total = 0
             for other in self.players:
                 if other.id == player_id:
@@ -373,6 +372,54 @@ class CatanGame:
                     total += amount
             if total > 0:
                 player.add_resource(resource, total)
+
+    def _validate_development_card_effect(
+        self,
+        player_id: int,
+        card_type: DevelopmentCardType,
+        payload: dict,
+    ) -> None:
+        if card_type == DevelopmentCardType.KNIGHT:
+            tile_id = payload.get("tile_id")
+            if tile_id is None:
+                raise ValueError("KNIGHT requires a tile id")
+            tile_id = int(tile_id)
+            if tile_id not in self.board.tiles:
+                raise ValueError("Invalid tile id")
+            victim_id = payload.get("victim_id")
+            if victim_id is not None:
+                victims = self.rules.robber_victims(
+                    self,
+                    tile_id,
+                    acting_player_id=player_id,
+                )
+                if int(victim_id) not in victims:
+                    raise ValueError("Invalid robber victim")
+        elif card_type == DevelopmentCardType.ROAD_BUILDING:
+            edges = payload.get("edge_ids", [])
+            if len(edges) != 2:
+                raise ValueError("ROAD_BUILDING requires two edge ids")
+            if int(edges[0]) == int(edges[1]):
+                raise ValueError("ROAD_BUILDING requires two different edge ids")
+            if (
+                int(edges[0]) not in self.board.edges
+                or int(edges[1]) not in self.board.edges
+            ):
+                raise ValueError("Invalid edge id")
+            candidate = deepcopy(self)
+            candidate.build_road(player_id, int(edges[0]), pay_cost=False)
+            candidate.build_road(player_id, int(edges[1]), pay_cost=False)
+        elif card_type == DevelopmentCardType.YEAR_OF_PLENTY:
+            resources = payload.get("resources", [])
+            if len(resources) != 2:
+                raise ValueError("YEAR_OF_PLENTY requires two resources")
+            for resource, amount in Counter(resources).items():
+                if not self.bank.can_pay(resource, amount):
+                    raise ValueError("Bank cannot satisfy YEAR_OF_PLENTY")
+        elif card_type == DevelopmentCardType.MONOPOLY:
+            resource = payload.get("resource")
+            if resource is None:
+                raise ValueError("MONOPOLY requires a resource")
 
     def trade_with_bank(
         self,
@@ -584,6 +631,7 @@ class CatanGame:
         first_player_id = self.initial_player_order[0]
         self.current_player_index = self._player_index(first_player_id)
         self.last_roll = None
+        self.last_roll_dice = None
         self.rolled_this_turn = False
         self.robber_move_required = False
         self.pending_discards.clear()

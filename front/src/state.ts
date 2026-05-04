@@ -27,6 +27,7 @@ export interface GameStateShape {
   playerMap: Record<number, PlayerPublic>;
   interactionMode: InteractionMode;
   pendingRobberTileId: number | null;
+  pendingRoadBuildingEdgeIds: number[];
   requestSeq: number;
 }
 
@@ -44,6 +45,7 @@ export const GameState: GameStateShape = {
   playerMap: {},
   interactionMode: "none",
   pendingRobberTileId: null,
+  pendingRoadBuildingEdgeIds: [],
   requestSeq: 0,
 };
 
@@ -83,6 +85,7 @@ export function updateState(envelope: StateEnvelope | null | undefined): void {
     }
   }
   GameState.interactionMode = "none";
+  GameState.pendingRoadBuildingEdgeIds = [];
   rebuildSceneFn();
   updateUIFn();
   checkPendingModalsFn();
