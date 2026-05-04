@@ -62,8 +62,13 @@ export function renderInteractionHighlights(): void {
     mode === "place_setup_road" ||
     mode === "play_road_building"
   ) {
+    const selectedRoadBuildingEdges =
+      mode === "play_road_building"
+        ? new Set(GameState.pendingRoadBuildingEdgeIds)
+        : null;
     for (const edge of board.edges) {
       if (edge.road) continue;
+      if (selectedRoadBuildingEdges?.has(edge.id)) continue;
       const pos = GameState.edgePositions[edge.id];
       if (!pos) continue;
       const road = new THREE.Mesh(roadGeo, hlRoadMat);

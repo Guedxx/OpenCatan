@@ -87,6 +87,7 @@ export async function handleBoardClick(
       GameState.pendingRoadBuildingEdgeIds.push(id);
     }
     if (GameState.pendingRoadBuildingEdgeIds.length < 2) {
+      rebuildScene();
       updateUI();
       return;
     }
