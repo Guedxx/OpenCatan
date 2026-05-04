@@ -57,9 +57,18 @@ export function renderInteractionHighlights(): void {
       setUserData(group, { type: "vertex", id: vertex.id });
       boardGroup.add(group);
     }
-  } else if (mode === "place_road" || mode === "place_setup_road") {
+  } else if (
+    mode === "place_road" ||
+    mode === "place_setup_road" ||
+    mode === "play_road_building"
+  ) {
+    const selectedRoadBuildingEdges =
+      mode === "play_road_building"
+        ? new Set(GameState.pendingRoadBuildingEdgeIds)
+        : null;
     for (const edge of board.edges) {
       if (edge.road) continue;
+      if (selectedRoadBuildingEdges?.has(edge.id)) continue;
       const pos = GameState.edgePositions[edge.id];
       if (!pos) continue;
       const road = new THREE.Mesh(roadGeo, hlRoadMat);
@@ -84,7 +93,7 @@ export function renderInteractionHighlights(): void {
       setUserData(group, { type: "vertex", id: vertex.id });
       boardGroup.add(group);
     }
-  } else if (mode === "move_robber") {
+  } else if (mode === "move_robber" || mode === "play_knight") {
     const robberTileId = board.robber_tile_id;
     for (const tile of board.tiles) {
       if (tile.id === robberTileId) continue;

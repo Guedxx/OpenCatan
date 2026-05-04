@@ -15,6 +15,9 @@ def game_public_state(game: CatanGame) -> dict[str, Any]:
             "current_player_id": game.current_player().id,
             "turn_phase": game.turn_manager.turn_phase.name,
             "last_roll": game.last_roll,
+            "last_roll_dice": (
+                None if game.last_roll_dice is None else list(game.last_roll_dice)
+            ),
         },
         "board": {
             "robber_tile_id": board.robber.tile_id if board.robber else None,
@@ -83,7 +86,11 @@ def game_public_state(game: CatanGame) -> dict[str, Any]:
                 "roads": sorted(player.road_ids),
                 "settlements": sorted(player.settlement_vertex_ids),
                 "cities": sorted(player.city_vertex_ids),
-                "victory_points": player.victory_points(),
+                "victory_points": (
+                    player.victory_points()
+                    if game.phase.name == "FINISHED"
+                    else player.visible_victory_points()
+                ),
                 "played_knights": player.played_knights,
                 "has_longest_road": player.has_longest_road,
                 "has_largest_army": player.has_largest_army,
@@ -136,6 +143,7 @@ def game_private_state(game: CatanGame, player_id: int) -> dict[str, Any]:
         },
         "dev_cards": [card.name for card in player.dev_cards_hand],
         "new_dev_cards_this_turn": [card.name for card in game.new_dev_cards_this_turn],
+        "victory_points": player.victory_points(),
         "legal_actions": sorted(game.legal_actions_for_player(player_id)),
     }
 

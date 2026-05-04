@@ -125,6 +125,7 @@ def test_two_step_trade_flow() -> None:
         assert response.json()["accepted"] is True
 
     # roll to enable trading
+    store.get(game_id).game.dice.roll = lambda: 8  # type: ignore[method-assign]
     roll = client.post(
         f"/games/{game_id}/commands",
         json={"player_token": p1["token"], "command": "roll_dice", "payload": {}},

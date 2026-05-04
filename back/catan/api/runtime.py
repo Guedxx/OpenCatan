@@ -139,7 +139,16 @@ class GameSession:
                 raise ValueError("Only current player can roll dice")
             roll = self.game.roll_dice()
             events.append(
-                {"type": "dice_rolled", "player_id": player_id, "value": roll}
+                {
+                    "type": "dice_rolled",
+                    "player_id": player_id,
+                    "value": roll,
+                    "dice": (
+                        None
+                        if self.game.last_roll_dice is None
+                        else list(self.game.last_roll_dice)
+                    ),
+                }
             )
             if roll == 7 and self.game.pending_discards:
                 events.append(

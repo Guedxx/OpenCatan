@@ -83,6 +83,15 @@ export function renderActionButtons(): void {
   if (GameState.interactionMode === "move_robber") {
     el.appendChild(banner("Click a tile to move the robber", "red"));
   }
+  if (GameState.interactionMode === "play_knight") {
+    el.appendChild(banner("Click a tile for the knight", "green"));
+  }
+  if (GameState.interactionMode === "play_road_building") {
+    const picked = GameState.pendingRoadBuildingEdgeIds.length;
+    el.appendChild(
+      banner(`Click road edge ${Math.min(picked + 1, 2)} of 2`, "green"),
+    );
+  }
 
   // Command buttons gated by legal_actions.
   if (hasLegalAction("roll_dice")) {

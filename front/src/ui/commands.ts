@@ -7,6 +7,7 @@ import {
   playersList,
 } from "../state";
 import type { InteractionMode } from "../types";
+import { showDevelopmentResourceDialog } from "./dialogs/development";
 import { showToast } from "./toast";
 
 // `toggleMode` is exported so the action bar can flip interactionMode and
@@ -28,17 +29,57 @@ export function registerActionCallbacks(callbacks: {
 export function toggleMode(newMode: InteractionMode): void {
   GameState.interactionMode =
     GameState.interactionMode === newMode ? "none" : newMode;
+  if (GameState.interactionMode !== "play_road_building") {
+    GameState.pendingRoadBuildingEdgeIds = [];
+  }
   rebuildSceneFn();
   renderActionButtonsFn();
+}
+
+export function startKnightCard(): void {
+  if (!hasLegalAction("play_development_card")) {
+    showToast("Development cards are not playable right now", "warning");
+    return;
+  }
+  GameState.interactionMode =
+    GameState.interactionMode === "play_knight" ? "none" : "play_knight";
+  GameState.pendingRoadBuildingEdgeIds = [];
+  rebuildSceneFn();
+  renderActionButtonsFn();
+  if (GameState.interactionMode === "play_knight") {
+    showToast("Choose a tile for the knight", "info");
+  }
+}
+
+export function startRoadBuildingCard(): void {
+  if (!hasLegalAction("play_development_card")) {
+    showToast("Development cards are not playable right now", "warning");
+    return;
+  }
+  GameState.interactionMode =
+    GameState.interactionMode === "play_road_building"
+      ? "none"
+      : "play_road_building";
+  GameState.pendingRoadBuildingEdgeIds = [];
+  rebuildSceneFn();
+  renderActionButtonsFn();
+  if (GameState.interactionMode === "play_road_building") {
+    showToast("Choose two road edges", "info");
+  }
+}
+
+export function startYearOfPlentyCard(): void {
+  showDevelopmentResourceDialog("year_of_plenty");
+}
+
+export function startMonopolyCard(): void {
+  showDevelopmentResourceDialog("monopoly");
 }
 
 export async function doRollDice(): Promise<void> {
   const r = await apiCommand("roll_dice");
   if (r && r.accepted) {
-    const ev = r.events?.find((e) => e.type === "dice_rolled");
-    if (ev && "value" in ev) {
-      showToast("Rolled " + String(ev.value) + "!", "info");
-    }
+    // Dice roll success is handled by the game state update and dice UI.
   }
 }
 

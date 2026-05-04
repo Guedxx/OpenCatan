@@ -8,7 +8,18 @@ import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
 import { showToast } from "../toast";
 
-export function showVictimDialog(tileId: number, victimIds: number[]): void {
+type VictimAction = "move_robber" | "play_knight";
+
+let pendingVictimAction: VictimAction = "move_robber";
+let pendingVictimTileId: number | null = null;
+
+export function showVictimDialog(
+  tileId: number,
+  victimIds: number[],
+  action: VictimAction = "move_robber",
+): void {
+  pendingVictimAction = action;
+  pendingVictimTileId = tileId;
   const dialog = $("victim-dialog");
   const container = $("victim-buttons");
   container.innerHTML = "";
@@ -32,26 +43,46 @@ export async function selectVictim(
   victimId: number,
 ): Promise<void> {
   $("victim-dialog").classList.add("hidden");
-  const result = await apiCommand("move_robber", {
-    tile_id: tileId,
-    victim_id: victimId,
-  });
+  const result =
+    pendingVictimAction === "play_knight"
+      ? await apiCommand("play_development_card", {
+          card_type: "knight",
+          args: { tile_id: tileId, victim_id: victimId },
+        })
+      : await apiCommand("move_robber", {
+          tile_id: tileId,
+          victim_id: victimId,
+        });
   if (result && result.accepted) {
     const ev = result.events?.find((e) => e.type === "robber_moved");
     if (ev && "stolen_resource" in ev && ev.stolen_resource) {
       showToast("Stole " + String(ev.stolen_resource) + "!", "success");
+    } else if (pendingVictimAction === "play_knight") {
+      showToast("Knight played", "success");
     }
   }
+  pendingVictimAction = "move_robber";
+  pendingVictimTileId = null;
 }
 
 export function hideVictimDialog(): void {
   $("victim-dialog").classList.add("hidden");
-  if (GameState.pendingRobberTileId !== null) {
-    void apiCommand("move_robber", {
-      tile_id: GameState.pendingRobberTileId,
-    });
+  const tileId = pendingVictimTileId ?? GameState.pendingRobberTileId;
+  if (tileId !== null) {
+    if (pendingVictimAction === "play_knight") {
+      void apiCommand("play_development_card", {
+        card_type: "knight",
+        args: { tile_id: tileId },
+      });
+    } else {
+      void apiCommand("move_robber", {
+        tile_id: tileId,
+      });
+    }
     GameState.pendingRobberTileId = null;
   }
+  pendingVictimAction = "move_robber";
+  pendingVictimTileId = null;
 }
 
 /** Wire the "Skip (no steal)" button once on boot. */

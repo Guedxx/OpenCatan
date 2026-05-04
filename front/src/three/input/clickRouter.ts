@@ -55,6 +55,53 @@ export async function handleBoardClick(
     } else {
       await apiCommand("move_robber", { tile_id: id });
     }
+  } else if (mode === "play_knight" && type === "tile") {
+    const board = GameState.publicState?.board;
+    if (!board) return;
+    const tile = board.tiles.find((t) => t.id === id);
+    if (!tile) return;
+    const victimIds = new Set<number>();
+    for (const vid of tile.vertex_ids) {
+      const vertex = board.vertices.find((v) => v.id === vid);
+      if (
+        vertex &&
+        vertex.building &&
+        vertex.building.owner_id !== GameState.myPlayerId
+      ) {
+        victimIds.add(vertex.building.owner_id);
+      }
+    }
+    if (victimIds.size > 0) {
+      showVictimDialog(id, [...victimIds], "play_knight");
+    } else {
+      const result = await apiCommand("play_development_card", {
+        card_type: "knight",
+        args: { tile_id: id },
+      });
+      if (result?.accepted) {
+        GameState.interactionMode = "none";
+      }
+    }
+  } else if (mode === "play_road_building" && type === "edge") {
+    if (!GameState.pendingRoadBuildingEdgeIds.includes(id)) {
+      GameState.pendingRoadBuildingEdgeIds.push(id);
+    }
+    if (GameState.pendingRoadBuildingEdgeIds.length < 2) {
+      rebuildScene();
+      updateUI();
+      return;
+    }
+    const edgeIds = [...GameState.pendingRoadBuildingEdgeIds.slice(0, 2)];
+    const result = await apiCommand("play_development_card", {
+      card_type: "road_building",
+      args: { edge_ids: edgeIds },
+    });
+    GameState.interactionMode = "none";
+    GameState.pendingRoadBuildingEdgeIds = [];
+    if (!result?.accepted) {
+      rebuildScene();
+      updateUI();
+    }
   }
   // updateState (via apiCommand) re-renders everything including action
   // buttons, so we don't need an explicit renderActionButtons() here.
