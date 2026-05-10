@@ -37,6 +37,7 @@ export async function handleBoardClick(
     GameState.pendingRobberTileId = id;
     const board = GameState.publicState?.board;
     if (!board) return;
+    if (id === board.robber_tile_id) return;
     const tile = board.tiles.find((t) => t.id === id);
     if (!tile) return;
     const victimIds = new Set<number>();
@@ -63,6 +64,7 @@ export async function handleBoardClick(
   } else if (mode === "play_knight" && type === "tile") {
     const board = GameState.publicState?.board;
     if (!board) return;
+    if (id === board.robber_tile_id) return;
     const tile = board.tiles.find((t) => t.id === id);
     if (!tile) return;
     const victimIds = new Set<number>();
