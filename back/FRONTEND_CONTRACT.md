@@ -92,6 +92,8 @@ Rules:
 - The returning player receives a new lobby token.
 - Later requests from other players in the finished game add only that
   returning player to the same return lobby with their own new lobby token.
+- Return lobbies do not accept public `POST /rooms/{room_id}/join` requests;
+  players must enter through this endpoint with a finished-game token.
 - Players who do not call this endpoint are not shown in the return lobby.
 - Clients should resume the returned lobby as host or guest based on their
   player entry in `room.players`.
@@ -347,7 +349,8 @@ case-insensitive.
 - `POST /rooms/{room_id}/join` — join as a guest.
   - Body: `{ "name": "Bob", "color": "blue" }`
   - Returns: `{ "room": RoomState, "player_token": "..." }`
-  - `400` on duplicate color / full / already-started; `404` on unknown room.
+  - `400` on duplicate color / full / already-started / return lobby;
+    `404` on unknown room.
 - `POST /rooms/{room_id}/color` — change your color.
   - Body: `{ "player_token": "...", "color": "white" }`
   - `400` on duplicate.

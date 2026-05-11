@@ -236,6 +236,13 @@ def test_finished_room_game_can_return_players_to_lobby() -> None:
     assert [p["name"] for p in host_return.json()["room"]["players"]] == ["Alice"]
     assert [p["ready"] for p in host_return.json()["room"]["players"]] == [True]
 
+    blocked_join = client.post(
+        f"/rooms/{room_id}/join",
+        json={"name": "Mallory", "color": "white"},
+    )
+    assert blocked_join.status_code == 400
+    assert "players from the finished game" in blocked_join.json()["detail"]
+
     guest_return = client.post(
         f"/games/{game_id}/return-to-lobby",
         json={"player_token": guest_game_token},

@@ -192,6 +192,10 @@ class LobbyManager:
                 raise LobbyError("Room not found")
             if room.game_id is not None:
                 raise LobbyError("Game already started")
+            if room.returning_game_id is not None:
+                raise LobbyError(
+                    "Return lobby only accepts players from the finished game"
+                )
             if len(room.players) >= MAX_PLAYERS:
                 raise LobbyError("Room is full")
             if room.is_color_taken(color):
