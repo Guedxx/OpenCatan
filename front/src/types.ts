@@ -80,11 +80,12 @@ export interface PlayerPublic {
   color: PlayerColor;
   resource_count: number;
   dev_card_count: number;
-  roads: number;
-  settlements: number;
-  cities: number;
+  roads: number[];
+  settlements: number[];
+  cities: number[];
   victory_points: number;
   played_knights: number;
+  longest_road_length: number;
   has_longest_road: boolean;
   has_largest_army: boolean;
 }

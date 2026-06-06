@@ -33,6 +33,8 @@ def test_create_game_and_fetch_state() -> None:
     state = state_response.json()
     assert state["game_id"] == game_id
     assert state["private_state"]["player_id"] == players[0]["player_id"]
+    public_player = state["public_state"]["players"][0]
+    assert public_player["longest_road_length"] == 0
 
 
 def test_command_endpoint_and_ws_snapshot() -> None:

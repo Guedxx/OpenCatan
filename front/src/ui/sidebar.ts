@@ -4,6 +4,7 @@
 import { doProposeTradeOffer } from "./commands";
 import { $ } from "./dom";
 import { toggleFps } from "./fpsCounter";
+import { toggleRankingDrawer } from "./rankingDrawer";
 import { showToast } from "./toast";
 
 export function bindSidebar(): void {
@@ -16,9 +17,7 @@ export function bindSidebar(): void {
   $("sb-trade").addEventListener("click", () => {
     void doProposeTradeOffer();
   });
-  $("sb-stats").addEventListener("click", () =>
-    showToast("Stats not implemented yet"),
-  );
+  $("sb-stats").addEventListener("click", toggleRankingDrawer);
   $("sb-info").addEventListener("click", () =>
     showToast("Info not implemented yet"),
   );

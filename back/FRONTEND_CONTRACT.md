@@ -100,7 +100,7 @@ Shape:
   - `resource_count`, `dev_card_count`
   - `roads`, `settlements`, `cities`
   - `victory_points` (publicly visible points; hidden VP cards are excluded until game end)
-  - `played_knights`, `has_longest_road`, `has_largest_army`
+  - `played_knights`, `longest_road_length`, `has_longest_road`, `has_largest_army`
 - `bank`: resource counts + dev cards remaining
 - `pending`:
   - `pending_discards` (map `player_id -> required_count`)

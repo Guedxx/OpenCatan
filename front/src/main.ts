@@ -31,6 +31,7 @@ import {
   checkPendingModals,
   registerPendingCallbacks,
 } from "./ui/pendingModals";
+import { bindRankingDrawer } from "./ui/rankingDrawer";
 import { bindSidebar } from "./ui/sidebar";
 import { showToast } from "./ui/toast";
 import { updateUI } from "./ui/updateUI";
@@ -58,6 +59,7 @@ registerPendingCallbacks({
 
 // ---- Static DOM bindings (sidebar, dialog buttons, canvas listeners).
 bindSidebar();
+bindRankingDrawer();
 bindMainMenu();
 bindMockGameButton();
 bindSinglePlayer();

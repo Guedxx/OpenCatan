@@ -3,6 +3,7 @@
 import { renderActionButtons } from "./actions";
 import { renderDiceDisplay } from "./dice";
 import { renderPlayerCards } from "./players";
+import { renderRankingDrawer } from "./rankingDrawer";
 import { renderResourceBar } from "./resources";
 import { renderGameStatus } from "./status";
 
@@ -12,4 +13,5 @@ export function updateUI(): void {
   renderActionButtons();
   renderGameStatus();
   renderDiceDisplay();
+  renderRankingDrawer();
 }
