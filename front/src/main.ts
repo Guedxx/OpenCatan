@@ -6,6 +6,7 @@
 
 import "./css/board.css";
 
+import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
 import { LobbyApiError, apiGetRoom } from "./net/lobbyApi";
 import { connectWebSocket } from "./net/ws";
@@ -47,7 +48,10 @@ import type { PlayerColor } from "./types";
 registerStateCallbacks({
   rebuildScene,
   updateUI,
-  checkPendingModals,
+  checkPendingModals: () => {
+    checkPendingModals();
+    scheduleRandomBotTurn();
+  },
 });
 registerActionCallbacks({
   rebuildScene,

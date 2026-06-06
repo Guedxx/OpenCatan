@@ -71,16 +71,48 @@ export async function apiCommand(
   payload: Record<string, unknown> = {},
 ): Promise<CommandResponse | null> {
   if (!GameState.gameId || !GameState.playerToken) return null;
-  GameState.requestSeq += 1;
-  const body = {
-    player_token: GameState.playerToken,
+  const data = await apiCommandForPlayer({
+    gameId: GameState.gameId,
+    playerToken: GameState.playerToken,
     command,
     payload,
-    expected_version: GameState.version,
-    request_id: `${Date.now()}-${GameState.requestSeq}-${command}`,
+    expectedVersion: GameState.version,
+  });
+  if (!data) return null;
+  if (!data.accepted) {
+    if (data.reason && data.reason.includes("Version mismatch")) {
+      const freshState = await apiGetState(
+        GameState.gameId,
+        GameState.playerToken,
+      );
+      if (freshState) updateState(freshState);
+      showToast("State refreshed, try again", "warning");
+    } else {
+      showToast(data.reason ?? "Command rejected", "error");
+    }
+    return data;
+  }
+  if (data.state) updateState(data.state);
+  return data;
+}
+
+export async function apiCommandForPlayer(options: {
+  gameId: string;
+  playerToken: string;
+  command: CommandName;
+  payload?: Record<string, unknown>;
+  expectedVersion?: number | null;
+}): Promise<CommandResponse | null> {
+  GameState.requestSeq += 1;
+  const body = {
+    player_token: options.playerToken,
+    command: options.command,
+    payload: options.payload ?? {},
+    expected_version: options.expectedVersion ?? undefined,
+    request_id: `${Date.now()}-${GameState.requestSeq}-${options.command}`,
   };
   try {
-    const res = await fetch(`${API_BASE}/games/${GameState.gameId}/commands`, {
+    const res = await fetch(`${API_BASE}/games/${options.gameId}/commands`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -93,22 +125,7 @@ export async function apiCommand(
       showToast("Game not found", "error");
       return null;
     }
-    const data = (await res.json()) as CommandResponse;
-    if (!data.accepted) {
-      if (data.reason && data.reason.includes("Version mismatch")) {
-        const freshState = await apiGetState(
-          GameState.gameId,
-          GameState.playerToken,
-        );
-        if (freshState) updateState(freshState);
-        showToast("State refreshed, try again", "warning");
-      } else {
-        showToast(data.reason ?? "Command rejected", "error");
-      }
-      return data;
-    }
-    if (data.state) updateState(data.state);
-    return data;
+    return (await res.json()) as CommandResponse;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     showToast("Network error: " + msg, "error");

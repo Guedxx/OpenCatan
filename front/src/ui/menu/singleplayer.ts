@@ -1,11 +1,13 @@
-// Singleplayer setup screen. Lets the user name themself and define 1-3 AI
-// opponents. The [Start Game] button is intentionally disabled and shows
-// a "Coming soon" tooltip until real AI opponents are implemented
-// backend-side.
+// Singleplayer setup screen. Lets the user name themself and define 1-3
+// random AI opponents.
 
+import { startRandomBots } from "../../ai/randomBot";
 import { PLAYER_COLORS } from "../../config";
+import { apiCreateGame } from "../../net/api";
 import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
+import { showToast } from "../toast";
+import { enterGame } from "./lobbyCommon";
 import { showScreen } from "./nav";
 
 const ALL_COLORS: PlayerColor[] = ["red", "blue", "white", "orange"];
@@ -32,7 +34,8 @@ function colorOptionsHtml(selected: PlayerColor, disabled: Set<PlayerColor>): st
     .map((c) => {
       const sel = c === selected ? " selected" : "";
       const dis = disabled.has(c) && c !== selected ? " disabled" : "";
-      return `<option value="${c}"${sel}${dis}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`;
+      const label = c.charAt(0).toUpperCase() + c.slice(1);
+      return `<option value="${c}"${sel}${dis}>${label}</option>`;
     })
     .join("");
 }
@@ -47,7 +50,6 @@ function usedColors(excludeSlot: number): Set<PlayerColor> {
 }
 
 function ensureDistinctColors(): void {
-  // Re-assign any duplicates in increasing-priority order (human first).
   const taken = new Set<PlayerColor>();
   taken.add(state.humanColor);
   for (let i = 0; i < state.botColors.length; i++) {
@@ -84,7 +86,6 @@ function render(): void {
     botsContainer.appendChild(row);
   }
 
-  // Rebind the per-bot inputs now that they exist.
   botsContainer.querySelectorAll<HTMLInputElement>(".sp-bot-name").forEach((inp) => {
     inp.addEventListener("input", () => {
       const idx = Number(inp.dataset.botIndex);
@@ -103,7 +104,9 @@ function render(): void {
 
 function setBotCount(n: number): void {
   state.botCount = Math.max(1, Math.min(3, n));
-  while (state.botNames.length < state.botCount) state.botNames.push(`Bot ${state.botNames.length + 1}`);
+  while (state.botNames.length < state.botCount) {
+    state.botNames.push(`Bot ${state.botNames.length + 1}`);
+  }
   while (state.botColors.length < state.botCount) {
     const taken = new Set<PlayerColor>([state.humanColor, ...state.botColors]);
     const free = ALL_COLORS.find((c) => !taken.has(c)) ?? "red";
@@ -128,11 +131,46 @@ export function bindSinglePlayer(): void {
   $("sp-bot-inc").addEventListener("click", () => setBotCount(state.botCount + 1));
   $("sp-bot-dec").addEventListener("click", () => setBotCount(state.botCount - 1));
 
-  // Start is disabled — AI opponents aren't implemented yet. The button
-  // still carries a clear tooltip so the intent is obvious.
   const startBtn = $<HTMLButtonElement>("btn-sp-start");
-  startBtn.disabled = true;
-  startBtn.title = "AI opponents coming soon";
+  startBtn.disabled = false;
+  startBtn.title = "";
+  startBtn.addEventListener("click", () => {
+    void startSinglePlayer(startBtn);
+  });
 
   render();
+}
+
+async function startSinglePlayer(button: HTMLButtonElement): Promise<void> {
+  const originalText = button.textContent ?? "Start Game";
+  button.disabled = true;
+  button.textContent = "Starting...";
+
+  try {
+    ensureDistinctColors();
+    const players = [
+      {
+        name: state.humanName.trim() || "Player",
+        color: state.humanColor,
+      },
+      ...Array.from({ length: state.botCount }, (_, i) => ({
+        name: state.botNames[i]?.trim() || `Bot ${i + 1}`,
+        color: state.botColors[i],
+      })),
+    ];
+    const game = await apiCreateGame(players);
+    const human = game?.players[0];
+    if (!game || !human) {
+      showToast("Could not start singleplayer game", "error");
+      return;
+    }
+    startRandomBots(game.game_id, game.players.slice(1));
+    await enterGame(game.game_id, human.token);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    showToast(`Could not start singleplayer: ${message}`, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }
