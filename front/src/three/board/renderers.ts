@@ -46,6 +46,11 @@ import {
   portStoneMat,
   portWoodMat,
   sailMat,
+  robberCapeMat,
+  robberSkinMat,
+  robberMaskMat,
+  robberHatMat,
+  robberSackMat,
 } from "../materials";
 import {
   boardGroup,
@@ -60,9 +65,12 @@ function setUserData(mesh: THREE.Object3D, data: BoardMeshUserData): void {
 
 // Geometries used every rebuild. Hoisted so rebuildScene doesn't allocate
 // (and `reusable.ts` keeps them out of the disposal path).
-export const robberBaseGeo = new THREE.CylinderGeometry(1.2, 1.5, 1, 16);
-export const robberBodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 2, 16);
-export const robberHeadGeo = new THREE.SphereGeometry(0.9, 16, 16);
+export const robberCapeGeo = new THREE.CylinderGeometry(0.3, 0.8, 1.5, 12);
+export const robberHeadGeo = new THREE.SphereGeometry(0.4, 16, 16);
+export const robberMaskGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.2, 16);
+export const robberHatBrimGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.05, 16);
+export const robberHatTopGeo = new THREE.CylinderGeometry(0.3, 0.4, 0.5, 12);
+export const robberSackGeo = new THREE.SphereGeometry(0.5, 12, 12);
 export const portBowTrimGeo = new THREE.BoxGeometry(0.64, 0.08, 0.5);
 
 export function renderTile(
@@ -288,18 +296,40 @@ export function renderPort(portData: Port): void {
 
 export function createRobber(x: number, z: number): void {
   const robberGroup = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.4 });
-  const base = new THREE.Mesh(robberBaseGeo, mat);
-  base.position.y = 0.5;
-  const body = new THREE.Mesh(robberBodyGeo, mat);
-  body.position.y = 2;
-  const head = new THREE.Mesh(robberHeadGeo, mat);
-  head.position.y = 3.5;
-  [base, body, head].forEach((m) => {
-    m.castShadow = true;
-    m.receiveShadow = true;
-    robberGroup.add(m);
+
+  const cape = new THREE.Mesh(robberCapeGeo, robberCapeMat);
+  cape.position.y = 0.75;
+  
+  const headGroup = new THREE.Group();
+  headGroup.position.y = 1.8;
+
+  const head = new THREE.Mesh(robberHeadGeo, robberSkinMat);
+  const mask = new THREE.Mesh(robberMaskGeo, robberMaskMat);
+  mask.position.y = 0.05;
+
+  const hatBrim = new THREE.Mesh(robberHatBrimGeo, robberHatMat);
+  hatBrim.position.y = 0.4;
+  const hatTop = new THREE.Mesh(robberHatTopGeo, robberHatMat);
+  hatTop.position.y = 0.65;
+
+  headGroup.add(head, mask, hatBrim, hatTop);
+
+  const sack = new THREE.Mesh(robberSackGeo, robberSackMat);
+  sack.position.set(0.6, 0.4, 0.2);
+  sack.scale.set(1, 1.2, 1);
+  sack.rotation.z = -0.2;
+
+  [cape, headGroup, sack].forEach((obj) => {
+    obj.traverse((m) => {
+      if (m instanceof THREE.Mesh) {
+        m.castShadow = true;
+        m.receiveShadow = true;
+      }
+    });
+    robberGroup.add(obj);
   });
+
+  robberGroup.scale.set(3, 3, 3);
   robberGroup.position.set(x, HEX_HEIGHT / 2, z);
   boardGroup.add(robberGroup);
 }
