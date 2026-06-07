@@ -6,6 +6,8 @@
 
 import "./css/board.css";
 
+import { bindGlobalButtonSounds, preloadSounds } from "./audio/sounds";
+import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
 import { LobbyApiError, apiGetRoom } from "./net/lobbyApi";
 import { connectWebSocket } from "./net/ws";
@@ -34,6 +36,7 @@ import {
   checkPendingModals,
   registerPendingCallbacks,
 } from "./ui/pendingModals";
+import { bindRankingDrawer } from "./ui/rankingDrawer";
 import { bindSidebar } from "./ui/sidebar";
 import { showToast } from "./ui/toast";
 import { updateUI } from "./ui/updateUI";
@@ -47,7 +50,10 @@ import type { PlayerColor } from "./types";
 registerStateCallbacks({
   rebuildScene,
   updateUI,
-  checkPendingModals,
+  checkPendingModals: () => {
+    checkPendingModals();
+    scheduleRandomBotTurn();
+  },
 });
 registerActionCallbacks({
   rebuildScene,
@@ -61,6 +67,7 @@ registerPendingCallbacks({
 
 // ---- Static DOM bindings (sidebar, dialog buttons, canvas listeners).
 bindSidebar();
+bindRankingDrawer();
 bindMainMenu();
 bindMockGameButton();
 bindSinglePlayer();
@@ -74,6 +81,8 @@ bindInfoDialog();
 bindVictimDialog();
 bindFpsCounter();
 bindGameOverDialog();
+bindGlobalButtonSounds();
+preloadSounds();
 installInputListeners();
 installResizeHandler();
 

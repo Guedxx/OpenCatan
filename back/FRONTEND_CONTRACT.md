@@ -143,7 +143,7 @@ Shape:
   - `resource_count`, `dev_card_count`
   - `roads`, `settlements`, `cities`
   - `victory_points` (publicly visible points; hidden VP cards are excluded until game end)
-  - `played_knights`, `has_longest_road`, `has_largest_army`
+  - `played_knights`, `longest_road_length`, `has_longest_road`, `has_largest_army`
 - `bank`: resource counts + dev cards remaining
 - `pending`:
   - `pending_discards` (map `player_id -> required_count`)
@@ -324,6 +324,7 @@ Server -> client messages:
 - `connected`
 - `snapshot`
 - `game_state_updated`
+- `emote_sent`
 - `error`
 - `pong`
 
@@ -331,6 +332,10 @@ Client -> server messages:
 
 - `{"type":"ping","payload":{}}`
 - `{"type":"snapshot","payload":{"player_token":"..."}}`
+- `{"type":"emote","payload":{"player_token":"...","emote":"laugh"}}`
+  - Allowed emotes: `laugh`, `cry`, `rage`, `smug`, `clap`, `oops`.
+  - Broadcasts to all game sockets as:
+    `{"type":"emote_sent","payload":{"game_id":"...","player_id":1,"player_name":"Alice","emote":"laugh"}}`.
 
 Important:
 
