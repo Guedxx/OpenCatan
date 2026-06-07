@@ -324,6 +324,7 @@ Server -> client messages:
 - `connected`
 - `snapshot`
 - `game_state_updated`
+- `emote_sent`
 - `error`
 - `pong`
 
@@ -331,6 +332,10 @@ Client -> server messages:
 
 - `{"type":"ping","payload":{}}`
 - `{"type":"snapshot","payload":{"player_token":"..."}}`
+- `{"type":"emote","payload":{"player_token":"...","emote":"laugh"}}`
+  - Allowed emotes: `laugh`, `cry`, `rage`, `smug`, `clap`, `oops`.
+  - Broadcasts to all game sockets as:
+    `{"type":"emote_sent","payload":{"game_id":"...","player_id":1,"player_name":"Alice","emote":"laugh"}}`.
 
 Important:
 

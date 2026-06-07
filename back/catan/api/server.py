@@ -232,6 +232,7 @@ async def game_ws(game_id: str, websocket: WebSocket) -> None:
         return
 
     await hub.connect(game_id, websocket)
+    store.record_ws_connect(game_id)
     try:
         await websocket.send_json(
             {
@@ -254,6 +255,51 @@ async def game_ws(game_id: str, websocket: WebSocket) -> None:
 
             if message.type == "ping":
                 await websocket.send_json({"type": "pong", "payload": {}})
+                continue
+
+            if message.type == "emote":
+                token = message.payload.get("player_token")
+                emote = str(message.payload.get("emote", ""))
+                allowed_emotes = {"laugh", "cry", "rage", "smug", "clap", "oops"}
+                if emote not in allowed_emotes:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "payload": {"message": "Invalid emote"},
+                        }
+                    )
+                    continue
+                if not token:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "payload": {"message": "Missing player token"},
+                        }
+                    )
+                    continue
+                try:
+                    player_id = session.player_id_from_token(str(token))
+                except ValueError:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "payload": {"message": "Invalid player token"},
+                        }
+                    )
+                    continue
+                player = session.game.player_by_id(player_id)
+                await hub.broadcast(
+                    game_id,
+                    {
+                        "type": "emote_sent",
+                        "payload": {
+                            "game_id": game_id,
+                            "player_id": player_id,
+                            "player_name": player.name,
+                            "emote": emote,
+                        },
+                    },
+                )
                 continue
 
             if message.type == "snapshot":
@@ -290,7 +336,10 @@ async def game_ws(game_id: str, websocket: WebSocket) -> None:
             )
 
     except WebSocketDisconnect:
+        pass
+    finally:
         hub.disconnect(game_id, websocket)
+        store.record_ws_disconnect(game_id)
 
 
 # ============================================================================

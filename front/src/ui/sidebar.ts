@@ -4,6 +4,7 @@
 import { doProposeTradeOffer } from "./commands";
 import { openInfoDialog } from "./dialogs/info";
 import { $ } from "./dom";
+import { bindEmotes, toggleEmotePanel } from "./emotes";
 import { toggleFps } from "./fpsCounter";
 import { toggleRankingDrawer } from "./rankingDrawer";
 import { openGameLobby } from "./menu/gameLobby";
@@ -13,9 +14,8 @@ export function bindSidebar(): void {
   $("sb-chat").addEventListener("click", () =>
     showToast("Chat not implemented yet"),
   );
-  $("sb-emotes").addEventListener("click", () =>
-    showToast("Emotes not implemented yet"),
-  );
+  bindEmotes();
+  $("sb-emotes").addEventListener("click", () => toggleEmotePanel());
   $("sb-trade").addEventListener("click", doProposeTradeOffer);
   $("sb-stats").addEventListener("click", toggleRankingDrawer);
   $("sb-info").addEventListener("click", openInfoDialog);

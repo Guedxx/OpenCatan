@@ -1,0 +1,12 @@
+{
+  "uiClick": "/assets/sounds/ui-click.ogg",
+  "uiConfirm": "/assets/sounds/ui-confirm.ogg",
+  "uiError": "/assets/sounds/ui-error.ogg",
+  "select": "/assets/sounds/select.ogg",
+  "diceRoll": "/assets/sounds/dice-roll.ogg",
+  "buildPlace": "/assets/sounds/build-place.ogg",
+  "cardDraw": "/assets/sounds/card-draw.ogg",
+  "cardPlay": "/assets/sounds/card-play.ogg",
+  "resourceGain": "/assets/sounds/resource-gain.ogg",
+  "trade": "/assets/sounds/trade.ogg"
+}
