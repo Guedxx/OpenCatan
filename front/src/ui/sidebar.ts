@@ -5,6 +5,7 @@ import { doProposeTradeOffer } from "./commands";
 import { openInfoDialog } from "./dialogs/info";
 import { $ } from "./dom";
 import { toggleFps } from "./fpsCounter";
+import { toggleRankingDrawer } from "./rankingDrawer";
 import { openGameLobby } from "./menu/gameLobby";
 import { showToast } from "./toast";
 
@@ -16,9 +17,7 @@ export function bindSidebar(): void {
     showToast("Emotes not implemented yet"),
   );
   $("sb-trade").addEventListener("click", doProposeTradeOffer);
-  $("sb-stats").addEventListener("click", () =>
-    showToast("Stats not implemented yet"),
-  );
+  $("sb-stats").addEventListener("click", toggleRankingDrawer);
   $("sb-info").addEventListener("click", openInfoDialog);
   $("sb-rules").addEventListener("click", () =>
     showToast("Rules not implemented yet"),

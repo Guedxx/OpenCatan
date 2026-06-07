@@ -7,6 +7,7 @@ import { handleFinishedGame } from "./gameEnd";
 import { renderGameOverDialog } from "./gameOver";
 import { renderGameLobby } from "./menu/gameLobby";
 import { renderPlayerCards } from "./players";
+import { renderRankingDrawer } from "./rankingDrawer";
 import { renderResourceBar } from "./resources";
 import { renderGameStatus } from "./status";
 
@@ -17,6 +18,7 @@ export function updateUI(): void {
   renderActionButtons();
   renderGameStatus();
   renderDiceDisplay();
+  renderRankingDrawer();
   syncInfoDialog();
   renderGameOverDialog();
   renderGameLobby();

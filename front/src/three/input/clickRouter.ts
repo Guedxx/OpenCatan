@@ -79,6 +79,7 @@ export async function handleBoardClick(
       }
     }
     if (victimIds.size > 0) {
+      showVictimDialog(id, [...victimIds], "play_knight");
       const cardCounts: Record<number, number> = {};
       for (const vid of victimIds) {
         const p = GameState.publicState?.players.find((player) => player.id === vid);
