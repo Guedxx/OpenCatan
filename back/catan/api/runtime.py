@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import dataclass, field
 from threading import RLock
 from typing import Any
 
 from catan.api.schemas import CommandType
-from catan.domain.enums import DevelopmentCardType, ResourceType
+from catan.domain.enums import DevelopmentCardType, GamePhase, ResourceType
 from catan.domain.game import CatanGame
 from catan.domain.player import Player
+
+# Finished games are kept briefly so clients can fetch the final state / return
+# to lobby, then removed from memory on the next store access.
+FINISHED_GAME_RETENTION_SECONDS = 10 * 60
+
+# Non-finished games with no active game WebSocket and no REST/command activity
+# for this long are considered abandoned and removed from memory.
+ABANDONED_GAME_IDLE_TIMEOUT_SECONDS = 30 * 60
 
 
 def _default_colors() -> list[str]:
@@ -44,6 +53,12 @@ class GameSession:
     version: int = 1
     lock: RLock = field(default_factory=RLock)
     request_results: dict[tuple[int, str], dict[str, Any]] = field(default_factory=dict)
+    created_at: float = field(default_factory=time.time)
+    last_activity: float = field(default_factory=time.time)
+    active_connections: int = 0
+
+    def touch(self) -> None:
+        self.last_activity = time.time()
 
     def player_id_from_token(self, token: str) -> int:
         if token not in self.player_tokens:
@@ -59,6 +74,7 @@ class GameSession:
         expected_version: int | None = None,
     ) -> dict[str, Any]:
         with self.lock:
+            self.touch()
             player_id = self.player_id_from_token(player_token)
 
             if expected_version is not None and expected_version != self.version:
@@ -327,12 +343,58 @@ class InMemoryGameStore:
 
     def create_game(self, players_input: list[dict[str, str]]) -> GameSession:
         with self._lock:
+            self._prune_stale_locked()
             return self._create_game_locked(players_input)
 
     def get(self, game_id: str) -> GameSession:
-        if game_id not in self._sessions:
-            raise KeyError(game_id)
-        return self._sessions[game_id]
+        with self._lock:
+            self._prune_stale_locked()
+            if game_id not in self._sessions:
+                raise KeyError(game_id)
+            session = self._sessions[game_id]
+            session.touch()
+            return session
+
+    def record_ws_connect(self, game_id: str) -> None:
+        with self._lock:
+            session = self._sessions.get(game_id)
+            if session is None:
+                return
+            session.active_connections += 1
+            session.touch()
+
+    def record_ws_disconnect(self, game_id: str) -> None:
+        with self._lock:
+            session = self._sessions.get(game_id)
+            if session is None:
+                return
+            session.active_connections = max(0, session.active_connections - 1)
+            session.touch()
+
+    def prune_stale(self) -> None:
+        with self._lock:
+            self._prune_stale_locked()
+
+    def _prune_stale_locked(self) -> None:
+        if not self._sessions:
+            return
+        now = time.time()
+        stale = [
+            game_id
+            for game_id, session in self._sessions.items()
+            if self._should_prune_session(session, now)
+        ]
+        for game_id in stale:
+            del self._sessions[game_id]
+
+    @staticmethod
+    def _should_prune_session(session: GameSession, now: float) -> bool:
+        if session.active_connections > 0:
+            return False
+        idle_for = now - session.last_activity
+        if session.game.phase == GamePhase.FINISHED:
+            return idle_for > FINISHED_GAME_RETENTION_SECONDS
+        return idle_for > ABANDONED_GAME_IDLE_TIMEOUT_SECONDS
 
     def _create_game_locked(self, players_input: list[dict[str, str]]) -> GameSession:
         game_id = uuid.uuid4().hex
