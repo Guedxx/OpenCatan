@@ -6,6 +6,7 @@
 
 import "./css/board.css";
 
+import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
 import { LobbyApiError, apiGetRoom } from "./net/lobbyApi";
 import { connectWebSocket } from "./net/ws";
@@ -16,13 +17,16 @@ import {
 } from "./ui/actions";
 import { registerActionCallbacks } from "./ui/commands";
 import { bindDiscardDialog } from "./ui/dialogs/discard";
+import { bindInfoDialog } from "./ui/dialogs/info";
 import { bindVictimDialog } from "./ui/dialogs/victim";
 import { bindFpsCounter } from "./ui/fpsCounter";
+import { bindGameOverDialog } from "./ui/gameOver";
 import { bindCreateRoom, resumeAsHost } from "./ui/menu/createRoom";
 import { bindJoinRoom, resumeAsGuest } from "./ui/menu/joinRoom";
 import { bindMainMenu } from "./ui/menu/mainMenu";
 import { bindMockGameButton } from "./ui/menu/mockGame";
 import { bindMultiplayer } from "./ui/menu/multiplayer";
+import { bindGameLobby } from "./ui/menu/gameLobby";
 import { bootstrapSettings, bindSettings } from "./ui/menu/settings";
 import { bindSinglePlayer } from "./ui/menu/singleplayer";
 import { closeMenu, showScreen } from "./ui/menu/nav";
@@ -31,6 +35,7 @@ import {
   checkPendingModals,
   registerPendingCallbacks,
 } from "./ui/pendingModals";
+import { bindRankingDrawer } from "./ui/rankingDrawer";
 import { bindSidebar } from "./ui/sidebar";
 import { showToast } from "./ui/toast";
 import { updateUI } from "./ui/updateUI";
@@ -44,7 +49,10 @@ import type { PlayerColor } from "./types";
 registerStateCallbacks({
   rebuildScene,
   updateUI,
-  checkPendingModals,
+  checkPendingModals: () => {
+    checkPendingModals();
+    scheduleRandomBotTurn();
+  },
 });
 registerActionCallbacks({
   rebuildScene,
@@ -58,16 +66,20 @@ registerPendingCallbacks({
 
 // ---- Static DOM bindings (sidebar, dialog buttons, canvas listeners).
 bindSidebar();
+bindRankingDrawer();
 bindMainMenu();
 bindMockGameButton();
 bindSinglePlayer();
 bindMultiplayer();
+bindGameLobby();
 bindCreateRoom();
 bindJoinRoom();
 bindSettings();
 bindDiscardDialog();
+bindInfoDialog();
 bindVictimDialog();
 bindFpsCounter();
+bindGameOverDialog();
 installInputListeners();
 installResizeHandler();
 

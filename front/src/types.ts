@@ -78,13 +78,16 @@ export interface PlayerPublic {
   id: number;
   name: string;
   color: PlayerColor;
+  is_active: boolean;
+  is_host: boolean;
   resource_count: number;
   dev_card_count: number;
-  roads: number;
-  settlements: number;
-  cities: number;
+  roads: number[];
+  settlements: number[];
+  cities: number[];
   victory_points: number;
   played_knights: number;
+  longest_road_length: number;
   has_longest_road: boolean;
   has_largest_army: boolean;
 }
@@ -119,12 +122,17 @@ export interface Pending {
   setup?: PendingSetup | null;
 }
 
+export interface BankState {
+  resource_cards: Record<string, number>;
+  dev_cards_remaining: number;
+}
+
 export interface PublicState {
   phase: Phase;
   turn: Turn | null;
   board: Board;
   players: PlayerPublic[];
-  bank?: Record<string, number>;
+  bank?: BankState;
   pending?: Pending | null;
 }
 
@@ -178,7 +186,9 @@ export type CommandName =
   | "propose_trade_offer"
   | "respond_trade_offer"
   | "cancel_trade_offer"
-  | "end_turn";
+  | "end_turn"
+  | "leave_game"
+  | "rejoin_game";
 
 export interface CommandEvent {
   type: string;

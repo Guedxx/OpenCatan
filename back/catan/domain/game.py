@@ -63,6 +63,8 @@ class CatanGame:
     new_dev_cards_this_turn: list[DevelopmentCardType] = field(default_factory=list)
 
     pending_trade_offer: TradeOffer | None = None
+    inactive_player_ids: set[int] = field(default_factory=set)
+    match_host_id: int | None = None
 
     @classmethod
     def create(cls, players: list[Player]) -> "CatanGame":
@@ -91,6 +93,8 @@ class CatanGame:
         self.played_non_vp_dev_this_turn = False
         self.new_dev_cards_this_turn.clear()
         self.pending_trade_offer = None
+        self.inactive_player_ids.clear()
+        self.match_host_id = self.players[0].id if self.players else None
 
     def player_by_id(self, player_id: int) -> Player:
         for player in self.players:
@@ -98,15 +102,91 @@ class CatanGame:
                 return player
         raise ValueError(f"Unknown player id {player_id}")
 
+    def is_active_player(self, player_id: int) -> bool:
+        return player_id not in self.inactive_player_ids
+
+    def active_player_ids(self) -> list[int]:
+        return [player.id for player in self.players if self.is_active_player(player.id)]
+
+    def active_player_count(self) -> int:
+        return len(self.active_player_ids())
+
+    def _ensure_current_player_active(self) -> None:
+        if not self.players:
+            return
+        if self.phase == GamePhase.FINISHED:
+            return
+        if self.is_active_player(self.players[self.current_player_index].id):
+            return
+        self.current_player_index = self._next_active_player_index(
+            self.current_player_index
+        )
+
+    def _next_active_player_index(self, start_index: int) -> int:
+        if not self.players:
+            raise ValueError("No players")
+        if self.active_player_count() == 0:
+            raise ValueError("No active players")
+        idx = start_index
+        for _ in range(len(self.players)):
+            idx = (idx + 1) % len(self.players)
+            if self.is_active_player(self.players[idx].id):
+                return idx
+        raise ValueError("No active players")
+
+    def _pick_new_host_id(self) -> int | None:
+        order = self.initial_player_order or [player.id for player in self.players]
+        for player_id in order:
+            if self.is_active_player(player_id):
+                return player_id
+        return None
+
+    def _setup_required_count(self) -> int:
+        return 1 if self.phase == GamePhase.SETUP_1 else 2
+
+    def _setup_counts(self, player_id: int) -> tuple[int, int]:
+        player = self.player_by_id(player_id)
+        settlements = len(player.settlement_vertex_ids) + len(player.city_vertex_ids)
+        return settlements, len(player.road_ids)
+
+    def _has_completed_setup_round(self, player_id: int) -> bool:
+        required = self._setup_required_count()
+        settlements, roads = self._setup_counts(player_id)
+        return settlements >= required and roads >= required
+
+    def _needs_setup_road_only(self, player_id: int) -> bool:
+        required = self._setup_required_count()
+        settlements, roads = self._setup_counts(player_id)
+        return settlements >= required and roads < required
+
+    def _setup_round_order(self) -> list[int]:
+        if self.phase == GamePhase.SETUP_2:
+            return list(reversed(self.initial_player_order))
+        return list(self.initial_player_order)
+
+    def _active_players_missing_setup_round(self) -> list[int]:
+        return [
+            player_id
+            for player_id in self._setup_round_order()
+            if self.is_active_player(player_id)
+            and not self._has_completed_setup_round(player_id)
+        ]
+
     def current_player(self) -> Player:
+        self._ensure_current_player_active()
         return self.players[self.current_player_index]
 
     def is_current_player(self, player_id: int) -> bool:
+        if not self.is_active_player(player_id):
+            return False
         return self.current_player().id == player_id
 
     def legal_actions_for_player(self, player_id: int) -> set[str]:
         actions: set[str] = set()
         if self.phase == GamePhase.FINISHED:
+            return actions
+
+        if not self.is_active_player(player_id):
             return actions
 
         if player_id in self.pending_discards:
@@ -212,8 +292,8 @@ class CatanGame:
         if self.pending_trade_offer is not None:
             raise ValueError("Resolve pending trade offer before ending turn")
 
-        self.current_player_index = self.turn_manager.next_player(
-            self.current_player_index, len(self.players)
+        self.current_player_index = self._next_active_player_index(
+            self.current_player_index
         )
         self.turn_manager.turn_number += 1
         self.turn_manager.turn_phase = TurnPhase.ROLL
@@ -222,6 +302,83 @@ class CatanGame:
         self.rolled_this_turn = False
         self.robber_move_required = False
         self.pending_discards.clear()
+        self.played_non_vp_dev_this_turn = False
+        self.new_dev_cards_this_turn.clear()
+
+    def leave_game(self, player_id: int) -> Player | None:
+        if self.phase == GamePhase.FINISHED:
+            return None
+        if not self.is_active_player(player_id):
+            return None
+
+        was_current = self.current_player().id == player_id
+        self.inactive_player_ids.add(player_id)
+        self.pending_discards.pop(player_id, None)
+        if (
+            self.pending_trade_offer is not None
+            and (
+                self.pending_trade_offer.from_player_id == player_id
+                or self.pending_trade_offer.to_player_id == player_id
+            )
+        ):
+            self.pending_trade_offer = None
+        if self.pending_setup_road_player_id == player_id:
+            self.pending_setup_road_player_id = None
+
+        if self.match_host_id == player_id:
+            self.match_host_id = self._pick_new_host_id()
+
+        winner = self._finish_game_due_to_last_active()
+        if winner is not None:
+            return winner
+
+        if was_current:
+            self._force_end_turn_after_leave(player_id)
+        return None
+
+    def rejoin_game(self, player_id: int) -> None:
+        if self.phase == GamePhase.FINISHED:
+            raise ValueError("Game is finished")
+        if self.is_active_player(player_id):
+            return
+        self.inactive_player_ids.discard(player_id)
+        self._queue_rejoined_setup_player(player_id)
+        if self.match_host_id is None or not self.is_active_player(self.match_host_id):
+            self.match_host_id = self._pick_new_host_id()
+        self._ensure_current_player_active()
+
+    def _finish_game_due_to_last_active(self) -> Player | None:
+        active_ids = self.active_player_ids()
+        if len(active_ids) > 1:
+            return None
+        self.phase = GamePhase.FINISHED
+        if not active_ids:
+            return None
+        return self.player_by_id(active_ids[0])
+
+    def _force_end_turn_after_leave(self, player_id: int) -> None:
+        if self.phase in {GamePhase.SETUP_1, GamePhase.SETUP_2}:
+            if (
+                self.setup_index < len(self.setup_order)
+                and self.setup_order[self.setup_index] == player_id
+            ):
+                self.setup_index += 1
+            self._advance_to_next_setup_player()
+            return
+
+        if self.phase != GamePhase.MAIN:
+            return
+        self.current_player_index = self._next_active_player_index(
+            self.current_player_index
+        )
+        self.turn_manager.turn_number += 1
+        self.turn_manager.turn_phase = TurnPhase.ROLL
+        self.last_roll = None
+        self.last_roll_dice = None
+        self.rolled_this_turn = False
+        self.robber_move_required = False
+        self.pending_discards.clear()
+        self.pending_trade_offer = None
         self.played_non_vp_dev_this_turn = False
         self.new_dev_cards_this_turn.clear()
 
@@ -441,6 +598,10 @@ class CatanGame:
         give: dict[ResourceType, int],
         receive: dict[ResourceType, int],
     ) -> TradeOffer:
+        if not self.is_active_player(from_player_id):
+            raise ValueError("Inactive players cannot trade")
+        if not self.is_active_player(to_player_id):
+            raise ValueError("Cannot trade with inactive player")
         self._require_main_turn_action(from_player_id)
         if self.pending_trade_offer is not None:
             raise ValueError("Another trade offer is already pending")
@@ -468,6 +629,8 @@ class CatanGame:
             raise ValueError("Unknown trade offer id")
         if offer.to_player_id != player_id:
             raise ValueError("Only target player can respond to this offer")
+        if not self.is_active_player(player_id):
+            raise ValueError("Inactive players cannot respond to trades")
 
         if accept:
             self.trade_with_player(offer)
@@ -484,6 +647,10 @@ class CatanGame:
         self.pending_trade_offer = None
 
     def trade_with_player(self, offer: TradeOffer) -> None:
+        if not self.is_active_player(offer.from_player_id):
+            raise ValueError("Inactive players cannot trade")
+        if not self.is_active_player(offer.to_player_id):
+            raise ValueError("Inactive players cannot trade")
         giver = self.player_by_id(offer.from_player_id)
         receiver = self.player_by_id(offer.to_player_id)
         if not giver.can_afford(offer.give):
@@ -530,7 +697,11 @@ class CatanGame:
         return stolen
 
     def check_winner(self) -> Player | None:
+        if self.phase == GamePhase.FINISHED:
+            return None
         for player in self.players:
+            if not self.is_active_player(player.id):
+                continue
             if player.victory_points() >= 10:
                 self.phase = GamePhase.FINISHED
                 return player
@@ -553,6 +724,8 @@ class CatanGame:
     def _can_build_now(self, player_id: int, *, setup_phase: bool) -> bool:
         if self.phase == GamePhase.FINISHED:
             return False
+        if not self.is_active_player(player_id):
+            return False
         if setup_phase:
             return self.phase in {
                 GamePhase.SETUP_1,
@@ -571,6 +744,8 @@ class CatanGame:
     def _require_main_turn_action(self, player_id: int) -> None:
         if self.phase != GamePhase.MAIN:
             raise ValueError("Action only available in main phase")
+        if not self.is_active_player(player_id):
+            raise ValueError("Inactive players cannot act")
         if not self.is_current_player(player_id):
             raise ValueError("Only current player can perform this action")
         if not self.rolled_this_turn:
@@ -583,13 +758,20 @@ class CatanGame:
     def _compute_required_discards(self) -> dict[int, int]:
         required: dict[int, int] = {}
         for player in self.players:
+            if not self.is_active_player(player.id):
+                continue
             if self.rules.discard_required(player):
                 required[player.id] = player.resource_count() // 2
         return required
 
     def _apply_production(self, production: dict[int, dict[ResourceType, int]]) -> None:
+        active_production = {
+            player_id: bundle
+            for player_id, bundle in production.items()
+            if self.is_active_player(player_id)
+        }
         totals: dict[ResourceType, int] = {}
-        for bundle in production.values():
+        for bundle in active_production.values():
             for resource, amount in bundle.items():
                 totals[resource] = totals.get(resource, 0) + amount
 
@@ -599,7 +781,7 @@ class CatanGame:
             if self.bank.can_pay(resource, total)
         }
 
-        for player_id, bundle in production.items():
+        for player_id, bundle in active_production.items():
             player = self.player_by_id(player_id)
             for resource, amount in bundle.items():
                 if resource not in payable_resources:
@@ -613,26 +795,63 @@ class CatanGame:
             raise ValueError("Unexpected setup player turn")
 
         self.setup_index += 1
-        if self.setup_index < len(self.setup_order):
-            next_player_id = self.setup_order[self.setup_index]
-            self.current_player_index = self._player_index(next_player_id)
+        self._advance_to_next_setup_player()
+
+    def _queue_rejoined_setup_player(self, player_id: int) -> None:
+        if self.phase not in {GamePhase.SETUP_1, GamePhase.SETUP_2}:
+            return
+        if self._has_completed_setup_round(player_id):
+            return
+        if player_id in self.setup_order[self.setup_index :]:
+            return
+        insert_at = min(self.setup_index + 1, len(self.setup_order))
+        self.setup_order.insert(insert_at, player_id)
+
+    def _advance_to_next_setup_player(self) -> None:
+        while self.phase in {GamePhase.SETUP_1, GamePhase.SETUP_2}:
+            while self.setup_index < len(self.setup_order):
+                next_player_id = self.setup_order[self.setup_index]
+                if self.is_active_player(
+                    next_player_id
+                ) and not self._has_completed_setup_round(next_player_id):
+                    self.current_player_index = self._player_index(next_player_id)
+                    self.pending_setup_road_player_id = (
+                        next_player_id
+                        if self._needs_setup_road_only(next_player_id)
+                        else None
+                    )
+                    return
+                self.setup_index += 1
+
+            missing_players = self._active_players_missing_setup_round()
+            if missing_players:
+                self.setup_order.extend(missing_players)
+                continue
+
+            if self.phase == GamePhase.SETUP_1:
+                self._start_second_setup_round()
+                continue
+
+            self._enter_main_phase_after_setup()
             return
 
-        if self.phase == GamePhase.SETUP_1:
-            self.phase = GamePhase.SETUP_2
-            self.setup_round = 2
-            self.setup_order = list(reversed(self.setup_order))
-            self.setup_index = 0
-            next_player_id = self.setup_order[self.setup_index]
-            self.current_player_index = self._player_index(next_player_id)
-            return
+    def _start_second_setup_round(self) -> None:
+        self.phase = GamePhase.SETUP_2
+        self.setup_round = 2
+        self.setup_order = self._setup_round_order()
+        self.setup_index = 0
+        self.pending_setup_road_player_id = None
 
+    def _enter_main_phase_after_setup(self) -> None:
         self.phase = GamePhase.MAIN
         self.turn_manager.turn_phase = TurnPhase.ROLL
         self.turn_manager.turn_number = 1
         self.setup_round = 2
         self.setup_index = 0
-        first_player_id = self.initial_player_order[0]
+        self.pending_setup_road_player_id = None
+        first_player_id = self._pick_new_host_id()
+        if first_player_id is None:
+            return
         self.current_player_index = self._player_index(first_player_id)
         self.last_roll = None
         self.last_roll_dice = None

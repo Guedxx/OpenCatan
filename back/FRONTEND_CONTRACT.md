@@ -26,6 +26,7 @@ This document reflects the current backend implementation in:
 
 - `GET /health`
 - `POST /games`
+- `POST /games/{game_id}/return-to-lobby`
 - `GET /games/{game_id}/state?player_token=...`
 - `POST /games/{game_id}/commands`
 - `WS /ws/games/{game_id}`
@@ -58,6 +59,46 @@ Create-game response includes:
 Default colors (if omitted):
 
 - `red`, `blue`, `white`, `orange`
+
+## Return To Lobby
+
+At any time after a game is created, a client may enter a return lobby for
+that game. This does not end the match; it only moves that client back to a
+lobby context.
+
+Request:
+
+```json
+{
+  "player_token": "..."
+}
+```
+
+Response:
+
+```json
+{
+  "room": { "...": "..." },
+  "player_token": "<this player's lobby token>"
+}
+```
+
+Rules:
+
+- The request is valid for any existing game (room-started or direct).
+- The game continues running; this endpoint only creates/joins a return lobby.
+- The first valid request creates a return lobby for the game. If the game
+  came from an existing room, that room code is reused when it is still
+  available; otherwise a new room code is generated.
+- The returning player receives a new lobby token.
+- Later requests from other players in the same game add only that player to
+  the same return lobby with their own new lobby token.
+- Return lobbies do not accept public `POST /rooms/{room_id}/join` requests;
+  players must enter through this endpoint with a game token.
+- The return lobby includes the full game roster immediately, even before
+  every player calls this endpoint.
+- Clients should resume the returned lobby as host or guest based on their
+  player entry in `room.players`.
 
 ## State Envelope
 
@@ -97,10 +138,12 @@ Shape:
   - `ports[]`: `id`, `port_type`, `trade_ratio`, `vertex_ids[2]`
 - `players[]`:
   - `id`, `name`, `color`
+  - `is_active` (bool; false when a player has left the match)
+  - `is_host` (bool; current match host among active players)
   - `resource_count`, `dev_card_count`
   - `roads`, `settlements`, `cities`
   - `victory_points` (publicly visible points; hidden VP cards are excluded until game end)
-  - `played_knights`, `has_longest_road`, `has_largest_army`
+  - `played_knights`, `longest_road_length`, `has_longest_road`, `has_largest_army`
 - `bank`: resource counts + dev cards remaining
 - `pending`:
   - `pending_discards` (map `player_id -> required_count`)
@@ -170,6 +213,8 @@ On rejection:
 - `respond_trade_offer`
 - `cancel_trade_offer`
 - `end_turn`
+- `leave_game`
+- `rejoin_game`
 
 ## Payload Contracts
 
@@ -182,6 +227,8 @@ On rejection:
 - `build_road`: `{ "edge_id": int }`
 - `roll_dice`: `{}`
 - `end_turn`: `{}`
+- `leave_game`: `{}`
+- `rejoin_game`: `{}`
 
 ### Roll 7 Discard Flow
 
@@ -310,7 +357,8 @@ case-insensitive.
 - `POST /rooms/{room_id}/join` — join as a guest.
   - Body: `{ "name": "Bob", "color": "blue" }`
   - Returns: `{ "room": RoomState, "player_token": "..." }`
-  - `400` on duplicate color / full / already-started; `404` on unknown room.
+  - `400` on duplicate color / full / already-started / return lobby;
+    `404` on unknown room.
 - `POST /rooms/{room_id}/color` — change your color.
   - Body: `{ "player_token": "...", "color": "white" }`
   - `400` on duplicate.
@@ -372,7 +420,8 @@ Player tokens are **never** included in room state payloads.
 - Rooms with no active WebSocket connections and no mutations for 5
   minutes are garbage-collected lazily on the next API call.
 - Once `game_started` has fired the room becomes read-only (no more
-  joins / color changes / ready toggles).
+  joins / color changes / ready toggles) until a finished game is reopened
+  through `POST /games/{game_id}/return-to-lobby`.
 
 ## Recommended Frontend Sync Logic
 

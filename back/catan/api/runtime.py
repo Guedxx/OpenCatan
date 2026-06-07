@@ -298,6 +298,18 @@ class GameSession:
             self.game.end_turn()
             events.append({"type": "turn_ended", "player_id": player_id})
 
+        elif command == CommandType.LEAVE_GAME:
+            winner = self.game.leave_game(player_id)
+            events.append({"type": "player_left", "player_id": player_id})
+            if winner is not None:
+                events.append(
+                    {"type": "game_finished", "winner_player_id": winner.id}
+                )
+
+        elif command == CommandType.REJOIN_GAME:
+            self.game.rejoin_game(player_id)
+            events.append({"type": "player_rejoined", "player_id": player_id})
+
         else:
             raise ValueError(f"Unsupported command: {command}")
 
@@ -315,30 +327,33 @@ class InMemoryGameStore:
 
     def create_game(self, players_input: list[dict[str, str]]) -> GameSession:
         with self._lock:
-            game_id = uuid.uuid4().hex
-            colors = _default_colors()
-            players: list[Player] = []
-            player_tokens: dict[str, int] = {}
-
-            for idx, item in enumerate(players_input, start=1):
-                name = item["name"]
-                color = item.get("color") or colors[(idx - 1) % len(colors)]
-                player = Player(id=idx, name=name, color=color)
-                players.append(player)
-                token = uuid.uuid4().hex
-                player_tokens[token] = idx
-
-            game = CatanGame.create(players)
-            session = GameSession(
-                game_id=game_id,
-                game=game,
-                player_tokens=player_tokens,
-                version=1,
-            )
-            self._sessions[game_id] = session
-            return session
+            return self._create_game_locked(players_input)
 
     def get(self, game_id: str) -> GameSession:
         if game_id not in self._sessions:
             raise KeyError(game_id)
         return self._sessions[game_id]
+
+    def _create_game_locked(self, players_input: list[dict[str, str]]) -> GameSession:
+        game_id = uuid.uuid4().hex
+        colors = _default_colors()
+        players: list[Player] = []
+        player_tokens: dict[str, int] = {}
+
+        for idx, item in enumerate(players_input, start=1):
+            name = item["name"]
+            color = item.get("color") or colors[(idx - 1) % len(colors)]
+            player = Player(id=idx, name=name, color=color)
+            players.append(player)
+            token = uuid.uuid4().hex
+            player_tokens[token] = idx
+
+        game = CatanGame.create(players)
+        session = GameSession(
+            game_id=game_id,
+            game=game,
+            player_tokens=player_tokens,
+            version=1,
+        )
+        self._sessions[game_id] = session
+        return session

@@ -60,7 +60,10 @@ class Room:
     room_id: str
     players: list[LobbyPlayer] = field(default_factory=list)
     game_id: str | None = None
+    returning_game_id: str | None = None
     lobby_to_game_token: dict[str, str] = field(default_factory=dict)
+    return_game_to_lobby_token: dict[str, str] = field(default_factory=dict)
+    return_active_tokens: set[str] = field(default_factory=set)
     created_at: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
     active_connections: int = 0
@@ -83,7 +86,7 @@ class Room:
             return False
         if self.find_player(token) is not None:
             return True
-        return token in self.lobby_to_game_token
+        return self.game_id is not None and token in self.lobby_to_game_token
 
     def is_color_taken(
         self, color: str, *, exclude_token: str | None = None
@@ -139,6 +142,7 @@ class LobbyManager:
 
     def __init__(self, game_store: InMemoryGameStore) -> None:
         self._rooms: dict[str, Room] = {}
+        self._return_rooms_by_game: dict[str, str] = {}
         self._lock = RLock()
         self._game_store = game_store
 
@@ -189,6 +193,10 @@ class LobbyManager:
                 raise LobbyError("Room not found")
             if room.game_id is not None:
                 raise LobbyError("Game already started")
+            if room.returning_game_id is not None:
+                raise LobbyError(
+                    "Return lobby only accepts players from the finished game"
+                )
             if len(room.players) >= MAX_PLAYERS:
                 raise LobbyError("Room is full")
             if room.is_color_taken(color):
@@ -241,6 +249,24 @@ class LobbyManager:
             room = self._rooms.get(code)
             if room is None:
                 return None
+            if room.returning_game_id is not None:
+                leaving = room.find_player(token)
+                if leaving is None:
+                    return room
+                was_host = leaving.is_host
+                leaving.is_host = False
+                leaving.ready = False
+                room.return_active_tokens.discard(token)
+
+                if was_host:
+                    next_host = self._pick_active_return_candidate(room)
+                    if next_host is not None:
+                        next_host.is_host = True
+                        next_host.ready = True
+
+                room.touch()
+                return room
+
             before = len(room.players)
             room.players = [p for p in room.players if p.player_token != token]
             if len(room.players) == before:
@@ -248,6 +274,11 @@ class LobbyManager:
                 return room
             if not room.players:
                 del self._rooms[code]
+                self._return_rooms_by_game = {
+                    game_id: room_id
+                    for game_id, room_id in self._return_rooms_by_game.items()
+                    if room_id != code
+                }
                 return None
             # If the host was the one leaving, promote the next oldest
             # player (and mark them ready so they remain the Start gate).
@@ -275,7 +306,11 @@ class LobbyManager:
             )
             players_input = [{"name": p.name, "color": p.color} for p in ordered]
             session = self._game_store.create_game(players_input)
+            if room.returning_game_id is not None:
+                self._return_rooms_by_game.pop(room.returning_game_id, None)
             room.game_id = session.game_id
+            room.returning_game_id = None
+            room.return_game_to_lobby_token.clear()
             # Map each lobby token -> that player's game_token.
             lobby_to_game: dict[str, str] = {}
             lobby_players_by_index = {
@@ -287,6 +322,154 @@ class LobbyManager:
             room.lobby_to_game_token = lobby_to_game
             room.touch()
             return room
+
+    def return_to_lobby(self, game_id: str, game_token: str) -> tuple[Room, str]:
+        with self._lock:
+            self._prune_stale_locked()
+            try:
+                session = self._game_store.get(game_id)
+            except KeyError as exc:
+                raise LobbyError("Game not found") from exc
+            try:
+                player_id = session.player_id_from_token(game_token)
+            except ValueError as exc:
+                raise LobbyError("Player not in game") from exc
+            room = self._get_or_create_return_room_locked(game_id)
+            self._seed_return_room_locked(room, session)
+            lobby_token = room.return_game_to_lobby_token.get(game_token)
+            has_host = self._has_active_return_host(room)
+            if lobby_token is None:
+                if len(room.players) >= MAX_PLAYERS:
+                    raise LobbyError("Room is full")
+                game_player = session.game.player_by_id(player_id)
+                lobby_token = _new_token()
+                returning_player = LobbyPlayer(
+                    player_token=lobby_token,
+                    name=game_player.name,
+                    color=game_player.color,
+                    ready=not has_host,
+                    is_host=not has_host,
+                )
+                returning_player.is_host = not has_host
+                returning_player.ready = returning_player.is_host
+                if room.is_color_taken(returning_player.color):
+                    free_color = next(
+                        (
+                            color
+                            for color in ["red", "blue", "white", "orange"]
+                            if not room.is_color_taken(color)
+                        ),
+                        None,
+                    )
+                    if free_color is None:
+                        raise LobbyError("Room is full")
+                    returning_player.color = free_color
+                room.players.append(returning_player)
+                room.return_game_to_lobby_token[game_token] = lobby_token
+            else:
+                existing = room.find_player(lobby_token)
+                if existing is None:
+                    if len(room.players) >= MAX_PLAYERS:
+                        raise LobbyError("Room is full")
+                    game_player = session.game.player_by_id(player_id)
+                    returning_player = LobbyPlayer(
+                        player_token=lobby_token,
+                        name=game_player.name,
+                        color=game_player.color,
+                        ready=not has_host,
+                        is_host=not has_host,
+                    )
+                    returning_player.is_host = not has_host
+                    returning_player.ready = returning_player.is_host
+                    if room.is_color_taken(returning_player.color):
+                        free_color = next(
+                            (
+                                color
+                                for color in ["red", "blue", "white", "orange"]
+                                if not room.is_color_taken(color)
+                            ),
+                            None,
+                        )
+                        if free_color is None:
+                            raise LobbyError("Room is full")
+                        returning_player.color = free_color
+                    room.players.append(returning_player)
+                elif not has_host:
+                    existing.is_host = True
+                    existing.ready = True
+
+            room.return_active_tokens.add(lobby_token)
+
+            room.touch()
+            return room, lobby_token
+
+    def _get_or_create_return_room_locked(self, game_id: str) -> Room:
+        room_id = self._return_rooms_by_game.get(game_id)
+        if room_id is not None:
+            room = self._rooms.get(room_id)
+            if room is not None:
+                return room
+
+        existing = next(
+            (
+                candidate
+                for candidate in self._rooms.values()
+                if candidate.game_id == game_id
+                or candidate.returning_game_id == game_id
+            ),
+            None,
+        )
+        if existing is not None:
+            existing.game_id = None
+            existing.returning_game_id = game_id
+            existing.players = []
+            existing.lobby_to_game_token.clear()
+            existing.return_game_to_lobby_token.clear()
+            existing.return_active_tokens.clear()
+            self._return_rooms_by_game[game_id] = existing.room_id
+            return existing
+
+        code = self._generate_unique_code()
+        room = Room(room_id=code, returning_game_id=game_id)
+        self._rooms[code] = room
+        self._return_rooms_by_game[game_id] = code
+        return room
+
+    def _seed_return_room_locked(self, room: Room, session: GameSession) -> None:
+        ordered = sorted(session.player_tokens.items(), key=lambda item: item[1])
+        for game_token, player_id in ordered:
+            lobby_token = room.return_game_to_lobby_token.get(game_token)
+            if lobby_token is None:
+                lobby_token = _new_token()
+                room.return_game_to_lobby_token[game_token] = lobby_token
+            if room.find_player(lobby_token) is not None:
+                continue
+            player = session.game.player_by_id(player_id)
+            room.players.append(
+                LobbyPlayer(
+                    player_token=lobby_token,
+                    name=player.name,
+                    color=player.color,
+                    ready=False,
+                    is_host=False,
+                )
+            )
+
+    @staticmethod
+    def _has_active_return_host(room: Room) -> bool:
+        return any(
+            p.is_host and p.player_token in room.return_active_tokens
+            for p in room.players
+        )
+
+    @staticmethod
+    def _pick_active_return_candidate(room: Room) -> LobbyPlayer | None:
+        active = [
+            p for p in room.players if p.player_token in room.return_active_tokens
+        ]
+        if not active:
+            return None
+        return min(active, key=lambda p: p.joined_at)
 
     # ---- Connection tracking (called by the WS hub) ----
 
@@ -359,6 +542,13 @@ class LobbyManager:
         ]
         for code in stale:
             del self._rooms[code]
+        if stale:
+            stale_set = set(stale)
+            self._return_rooms_by_game = {
+                game_id: room_id
+                for game_id, room_id in self._return_rooms_by_game.items()
+                if room_id not in stale_set
+            }
 
 
 class LobbyError(Exception):
