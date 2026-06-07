@@ -2,11 +2,14 @@
 // them wired here so the HTML can stay free of inline onclick.
 
 import { doProposeTradeOffer } from "./commands";
+import { openCostsDialog } from "./dialogs/costs";
 import { openInfoDialog } from "./dialogs/info";
-import { $ } from "./dom";
-import { toggleFps } from "./fpsCounter";
+import { openRulesDialog } from "./dialogs/rules";
+import { $, $opt } from "./dom";
+import { bindEmotes, toggleEmotePanel } from "./emotes";
+import { toggleRankingDrawer } from "./rankingDrawer";
 import { openGameLobby } from "./menu/gameLobby";
-import { closeMenu, currentScreen } from "./menu/nav";
+import { showScreen } from "./menu/nav";
 import { showToast } from "./toast";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -21,41 +24,18 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function bindSidebar(): void {
-  $("sb-chat").addEventListener("click", () =>
+  $opt("sb-chat")?.addEventListener("click", () =>
     showToast("Chat not implemented yet"),
   );
-  $("sb-emotes").addEventListener("click", () =>
-    showToast("Emotes not implemented yet"),
-  );
+  bindEmotes();
+  $("sb-emotes").addEventListener("click", () => toggleEmotePanel());
   $("sb-trade").addEventListener("click", doProposeTradeOffer);
-  $("sb-stats").addEventListener("click", () =>
-    showToast("Stats not implemented yet"),
-  );
+  $("sb-costs").addEventListener("click", openCostsDialog);
+  $("sb-stats").addEventListener("click", toggleRankingDrawer);
   $("sb-info").addEventListener("click", openInfoDialog);
-  $("sb-rules").addEventListener("click", () =>
-    showToast("Rules not implemented yet"),
-  );
+  $("sb-rules").addEventListener("click", openRulesDialog);
   $("sb-lobby").addEventListener("click", () => {
     openGameLobby();
   });
-  $("sb-settings").addEventListener("click", () =>
-    showToast("Settings not implemented yet"),
-  );
-  $("sb-fps").addEventListener("click", toggleFps);
-
-  window.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    if (isTypingTarget(event.target)) return;
-    event.preventDefault();
-
-    const screen = currentScreen();
-    if (screen === "none") {
-      // Game is visible, open lobby
-      openGameLobby();
-    } else if (screen === "game-lobby") {
-      // Lobby is visible, close it
-      closeMenu();
-    }
-    // Ignore Esc if any other menu screen is open
-  });
+  $("sb-settings").addEventListener("click", () => showScreen("settings"));
 }

@@ -1,4 +1,5 @@
 import { RESOURCE_COLORS, RESOURCE_LABELS, RESOURCE_ORDER } from "../../config";
+import { t, translatePage } from "../../i18n";
 import { apiCommand } from "../../net/api";
 import { GameState, hasLegalAction, playersList } from "../../state";
 import type { PortType, TradeOffer } from "../../types";
@@ -78,7 +79,7 @@ function resourceCount(resource: string): number {
 
 function resourceChip(resource: string, amount: number): string {
   const key = normalizeResourceKey(resource);
-  const label = RESOURCE_LABELS[key] ?? key;
+  const label = t(RESOURCE_LABELS[key] ?? key);
   const color = RESOURCE_COLORS[key] ?? "#d4a373";
   return `<span class="trade-resource-chip" style="background:${color}">${amount} ${label}</span>`;
 }
@@ -133,7 +134,7 @@ function renderTargetOptions(): string {
 function renderResourceOptions(selected: string): string {
   return RESOURCE_ORDER.map((resource) => {
     const chosen = resource === selected ? "selected" : "";
-    const label = RESOURCE_LABELS[resource];
+    const label = t(RESOURCE_LABELS[resource]);
     const count = resourceCount(resource);
     return `<option value="${resource}" ${chosen}>${label} (${count})</option>`;
   }).join("");
@@ -229,7 +230,7 @@ function proposalFormHtml(): string {
           <p class="text-[#fbe4b4]/80 text-sm">Choose what you give, what you want back, and who should receive the proposal.</p>
         </div>
         <div class="trade-summary-pill text-sm">
-          You have ${resourceCount(draft.giveResource)} ${RESOURCE_LABELS[draft.giveResource] ?? draft.giveResource}
+          ${t("You have")} ${resourceCount(draft.giveResource)} ${t(RESOURCE_LABELS[draft.giveResource] ?? draft.giveResource)}
         </div>
       </div>
       <div class="grid md:grid-cols-2 gap-4">
@@ -313,7 +314,7 @@ function bankTradeHtml(): string {
             </label>
           </div>
           <p class="text-[#fbe4b4]/75 text-sm mt-3">${bankTradeHint(bankDraft.giveResource)}</p>
-          <p class="text-[#fbe4b4]/75 text-sm mt-1">You currently have ${resourceCount(bankDraft.giveResource)} ${RESOURCE_LABELS[bankDraft.giveResource] ?? bankDraft.giveResource}.</p>
+          <p class="text-[#fbe4b4]/75 text-sm mt-1">${t("You currently have")} ${resourceCount(bankDraft.giveResource)} ${t(RESOURCE_LABELS[bankDraft.giveResource] ?? bankDraft.giveResource)}.</p>
         </div>
         <div class="trade-card p-4">
           <h4 class="text-[#fff3db] font-bold mb-3">You Receive</h4>
@@ -594,11 +595,14 @@ export function renderTradeDialog(): void {
 
   bindCommon();
 
+  const translateTradeDialog = () => translatePage($("trade-dialog"));
+
   if (outgoingTradeTracker?.status === "resolved") {
     subtitle.textContent = "The player answered your proposal.";
     content.innerHTML = renderModeTabs() + resolvedOfferHtml(outgoingTradeTracker);
     bindModeTabs();
     $opt<HTMLButtonElement>("trade-dismiss")?.addEventListener("click", closeTradeDialog);
+    translateTradeDialog();
     return;
   }
 
@@ -617,6 +621,7 @@ export function renderTradeDialog(): void {
       "outgoing",
     );
     $opt<HTMLButtonElement>("trade-dismiss")?.addEventListener("click", closeTradeDialog);
+    translateTradeDialog();
     return;
   }
 
@@ -628,6 +633,7 @@ export function renderTradeDialog(): void {
     content.innerHTML = renderModeTabs() + pendingOfferHtml(offer, role);
     bindModeTabs();
     bindPendingActions(offer, role);
+    translateTradeDialog();
     return;
   }
 
@@ -636,6 +642,7 @@ export function renderTradeDialog(): void {
     content.innerHTML = renderModeTabs() + bankTradeHtml();
     bindModeTabs();
     bindBankTradeForm();
+    translateTradeDialog();
     return;
   }
 
@@ -645,6 +652,7 @@ export function renderTradeDialog(): void {
     content.innerHTML = renderModeTabs() + proposalFormHtml();
     bindModeTabs();
     bindProposalForm();
+    translateTradeDialog();
     return;
   }
 
@@ -654,6 +662,7 @@ export function renderTradeDialog(): void {
     content.innerHTML = renderModeTabs() + bankTradeHtml();
     bindModeTabs();
     bindBankTradeForm();
+    translateTradeDialog();
     return;
   }
 
@@ -661,6 +670,7 @@ export function renderTradeDialog(): void {
   content.innerHTML = renderModeTabs() + unavailableHtml();
   bindModeTabs();
   $opt<HTMLButtonElement>("trade-dismiss")?.addEventListener("click", closeTradeDialog);
+  translateTradeDialog();
 }
 
 export function openTradeDialog(mode: TradeDialogMode = "player"): void {

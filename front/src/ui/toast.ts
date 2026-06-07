@@ -1,5 +1,7 @@
 // Transient bottom-right-ish notifications.
 
+import { translateMessage } from "../i18n";
+
 export type ToastType = "info" | "error" | "warning" | "success";
 
 const COLORS: Record<ToastType, string> = {
@@ -16,7 +18,7 @@ export function showToast(message: string, type: ToastType = "info"): void {
   el.className =
     `${COLORS[type]} border text-white text-sm px-4 py-2 rounded-lg ` +
     `shadow-lg pointer-events-auto opacity-0 transition-opacity duration-300`;
-  el.textContent = message;
+  el.textContent = translateMessage(message);
   container.appendChild(el);
   requestAnimationFrame(() => {
     el.style.opacity = "1";

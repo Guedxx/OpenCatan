@@ -23,6 +23,16 @@ interface ErrorMessage {
   payload: { message?: string };
 }
 
+interface EmoteSentMessage {
+  type: "emote_sent";
+  payload: {
+    game_id: string;
+    player_id: number;
+    player_name: string;
+    emote: string;
+  };
+}
+
 interface OtherMessage {
   type: "connected" | "pong";
   payload: unknown;
@@ -32,6 +42,7 @@ type WsMessage =
   | SnapshotMessage
   | GameStateUpdatedMessage
   | ErrorMessage
+  | EmoteSentMessage
   | OtherMessage;
 
 let ws: WebSocket | null = null;
@@ -76,6 +87,10 @@ export function connectWebSocket(gameId: string): void {
           },
         );
       }
+    } else if (msg.type === "emote_sent") {
+      document.dispatchEvent(
+        new CustomEvent("opencatan:emote", { detail: msg.payload }),
+      );
     } else if (msg.type === "error") {
       showToast(msg.payload.message ?? "WebSocket error", "error");
     }
@@ -83,4 +98,20 @@ export function connectWebSocket(gameId: string): void {
   ws.onclose = () => {
     setTimeout(() => connectWebSocket(gameId), 3000);
   };
+}
+
+export function sendGameEmote(emote: string): boolean {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !GameState.playerToken) {
+    return false;
+  }
+  ws.send(
+    JSON.stringify({
+      type: "emote",
+      payload: {
+        player_token: GameState.playerToken,
+        emote,
+      },
+    }),
+  );
+  return true;
 }

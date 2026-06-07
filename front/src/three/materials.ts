@@ -292,3 +292,51 @@ export const hlRobberMatDim = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide,
   depthWrite: false,
 });
+
+// Low-poly Robber Character Materials
+
+function createStripedTexture(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2D canvas context unavailable");
+
+  ctx.fillStyle = "#eeeeee";
+  ctx.fillRect(0, 0, 64, 128);
+
+  ctx.fillStyle = "#111111";
+  for (let y = 0; y < 128; y += 16) {
+    ctx.fillRect(0, y, 64, 8);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+export const robberCapeMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  map: createStripedTexture(),
+  roughness: 0.9,
+});
+export const robberSkinMat = new THREE.MeshStandardMaterial({
+  color: 0xfcdcb4,
+  roughness: 0.6,
+});
+export const robberMaskMat = new THREE.MeshStandardMaterial({
+  color: 0x000000,
+  roughness: 0.5,
+});
+export const robberHatMat = new THREE.MeshStandardMaterial({
+  color: 0x111111,
+  roughness: 0.8,
+});
+export const robberSackMat = new THREE.MeshStandardMaterial({
+  color: 0x8b5a2b,
+  roughness: 0.9,
+});

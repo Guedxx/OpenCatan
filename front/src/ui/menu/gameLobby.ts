@@ -1,5 +1,6 @@
 import { apiCommand } from "../../net/api";
 import { PLAYER_COLORS } from "../../config";
+import { translatePage } from "../../i18n";
 import { GameState } from "../../state";
 import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
@@ -66,6 +67,7 @@ export function renderGameLobby(): void {
   backBtn.disabled = !isActive;
   leaveBtn.disabled = !isActive;
   rejoinBtn.classList.toggle("hidden", isActive);
+  translatePage($("screen-game-lobby"));
 }
 
 export function openGameLobby(): void {

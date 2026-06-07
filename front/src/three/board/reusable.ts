@@ -170,9 +170,12 @@ import {
 import { robberHighlightGeo } from "./highlights";
 import {
   portBowTrimGeo,
-  robberBaseGeo,
-  robberBodyGeo,
+  robberCapeGeo,
   robberHeadGeo,
+  robberMaskGeo,
+  robberHatBrimGeo,
+  robberHatTopGeo,
+  robberSackGeo,
 } from "./renderers";
 import {
   boatCabinMat,
@@ -193,6 +196,11 @@ import {
   portStoneMat,
   portWoodMat,
   sailMat,
+  robberCapeMat,
+  robberSkinMat,
+  robberMaskMat,
+  robberHatMat,
+  robberSackMat,
 } from "../materials";
 
 export const reusableGeometries = new Set<THREE.BufferGeometry>([
@@ -302,9 +310,12 @@ export const reusableGeometries = new Set<THREE.BufferGeometry>([
   minecartLumpGeo,
   minecartWheelGeo,
   // Hoisted per-rebuild geos (robber + port bow trim + robber-move highlight)
-  robberBaseGeo,
-  robberBodyGeo,
+  robberCapeGeo,
   robberHeadGeo,
+  robberMaskGeo,
+  robberHatBrimGeo,
+  robberHatTopGeo,
+  robberSackGeo,
   portBowTrimGeo,
   robberHighlightGeo,
 ]);
@@ -385,4 +396,9 @@ export const reusableMaterials = new Set<THREE.Material>([
   hlCityMat,
   hlRobberMat,
   hlRobberMatDim,
+  robberCapeMat,
+  robberSkinMat,
+  robberMaskMat,
+  robberHatMat,
+  robberSackMat,
 ]);

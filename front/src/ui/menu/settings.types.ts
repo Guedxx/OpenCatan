@@ -2,3 +2,4 @@
 
 export type ShadowQuality = "high" | "medium" | "low" | "off";
 export type GraphicsPreset = "low" | "medium" | "high";
+export type Language = "en" | "pt";

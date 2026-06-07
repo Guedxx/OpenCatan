@@ -21,15 +21,14 @@
       <div class="flex-1 flex justify-between items-end pb-16 pointer-events-none">
         <!-- Left Side Buttons -->
         <div class="flex flex-col space-y-2 pointer-events-auto">
-          <button id="sb-chat"     class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x1F4AC;</button>
           <button id="sb-emotes"   class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x1F642;</button>
           <button id="sb-trade"    class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x1F91D;</button>
+          <button id="sb-costs"    class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" title="Build costs">&#x1F4CB;</button>
           <button id="sb-stats"    class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x1F4CA;</button>
           <button id="sb-info"     class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x2139;&#xFE0F;</button>
           <button id="sb-rules"    class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x1F4D6;</button>
           <button id="sb-lobby"    class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl" title="Return to lobby">&#x1F519;</button>
           <button id="sb-settings" class="btn-side w-12 h-10 rounded flex items-center justify-center text-xl">&#x2699;&#xFE0F;</button>
-          <button id="sb-fps" title="Toggle FPS (F)" class="btn-side w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-[#3e2723]">FPS</button>
         </div>
 
         <!-- Right Side: Action Buttons -->
@@ -95,7 +94,6 @@
           <button id="btn-sp-back" class="btn-action px-5 py-2 rounded font-bold text-[#3e2723]">Back</button>
           <button id="btn-sp-start" class="btn-action px-6 py-2 rounded font-bold text-[#3e2723] text-lg" disabled>Start Game</button>
         </div>
-        <p class="text-yellow-600 text-xs text-center mt-3">AI opponents coming soon</p>
       </div>
 
       <!-- ===== Multiplayer Menu ===== -->
@@ -185,21 +183,10 @@
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <label for="st-preset" class="text-yellow-400 font-bold text-sm">Graphics Preset</label>
-            <select id="st-preset" class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <label for="st-shadow" class="text-yellow-400 font-bold text-sm">Shadow Quality</label>
-            <select id="st-shadow" class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">
-              <option value="high">High (2048)</option>
-              <option value="medium">Medium (1024)</option>
-              <option value="low">Low (512)</option>
-              <option value="off">Off</option>
+            <label for="st-language" class="text-yellow-400 font-bold text-sm">Language</label>
+            <select id="st-language" class="px-2 py-1.5 rounded bg-[#5d4037] text-white border border-yellow-800">
+              <option value="en">English</option>
+              <option value="pt">Portuguese</option>
             </select>
           </div>
 
@@ -214,7 +201,7 @@
           </label>
 
           <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-yellow-400 font-bold text-sm">Show FPS counter <span class="text-yellow-700 text-xs">(F)</span></span>
+            <span class="text-yellow-400 font-bold text-sm">Show FPS counter</span>
             <input id="st-fps" type="checkbox" class="w-5 h-5 accent-yellow-600" />
           </label>
         </div>
@@ -289,6 +276,36 @@
           <button id="info-close" class="btn-action px-4 py-2 rounded font-bold text-[#3e2723]" type="button">Close</button>
         </div>
         <div id="info-content" class="p-6"></div>
+      </div>
+    </div>
+
+    <!-- Costs Dialog -->
+    <div id="costs-dialog" class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 hidden p-4">
+      <div class="w-full max-w-[540px] max-h-[calc(100vh-2rem)] overflow-y-auto bg-[#3e2723] border-2 border-yellow-700 rounded-2xl shadow-2xl">
+        <div class="sticky top-0 bg-[#3e2723] border-b border-yellow-800 px-6 py-4 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-yellow-500 text-xs font-bold uppercase tracking-[0.2em]">Reference</p>
+            <h2 class="font-game text-yellow-400 text-3xl">Build Costs</h2>
+            <p class="text-yellow-100/80 text-sm mt-1">Check each cost and what your hand is missing.</p>
+          </div>
+          <button id="costs-close" class="btn-action px-4 py-2 rounded font-bold text-[#3e2723]" type="button">Close</button>
+        </div>
+        <div id="costs-content" class="p-4"></div>
+      </div>
+    </div>
+
+    <!-- Rules Dialog -->
+    <div id="rules-dialog" class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 hidden p-4">
+      <div class="w-full max-w-[680px] max-h-[calc(100vh-2rem)] overflow-y-auto bg-[#3e2723] border-2 border-yellow-700 rounded-2xl shadow-2xl">
+        <div class="sticky top-0 bg-[#3e2723] border-b border-yellow-800 px-6 py-4 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-yellow-500 text-xs font-bold uppercase tracking-[0.2em]">Beginner Help</p>
+            <h2 class="font-game text-yellow-400 text-3xl">Basic Rules</h2>
+            <p class="text-yellow-100/80 text-sm mt-1">Quick reminders for learning the match flow.</p>
+          </div>
+          <button id="rules-close" class="btn-action px-4 py-2 rounded font-bold text-[#3e2723]" type="button">Close</button>
+        </div>
+        <div id="rules-content" class="p-4"></div>
       </div>
     </div>
 

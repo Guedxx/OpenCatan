@@ -1,6 +1,6 @@
 // Typed localStorage wrapper for persistent UI settings.
 
-import type { GraphicsPreset, ShadowQuality } from "./settings.types";
+import type { GraphicsPreset, Language, ShadowQuality } from "./settings.types";
 
 const STORAGE_KEY = "opencatan.settings";
 const ACTIVE_ROOM_KEY = "opencatan.activeRoom";
@@ -13,6 +13,7 @@ export interface MenuSettings {
   floraAnimation: boolean;
   showFps: boolean;
   graphicsPreset: GraphicsPreset;
+  language: Language;
 }
 
 export const DEFAULT_SETTINGS: MenuSettings = {
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: MenuSettings = {
   floraAnimation: true,
   showFps: true,
   graphicsPreset: "high",
+  language: "en",
 };
 
 export function loadSettings(): MenuSettings {

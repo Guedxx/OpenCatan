@@ -23,6 +23,10 @@ npm run dev
 
 Open `http://localhost:5173/`.
 
+The Singleplayer menu starts a local game against 1-3 simple random AI
+opponents. The bots use the same backend commands as human players, so invalid
+moves are still rejected by the server rules.
+
 Production build:
 
 ```bash

@@ -9,6 +9,9 @@ from catan.domain.game import CatanGame
 
 def game_public_state(game: CatanGame) -> dict[str, Any]:
     board = game.board
+    longest_road_lengths = {
+        player.id: board.compute_longest_road(player.id) for player in game.players
+    }
     active_ids = set(game.active_player_ids())
     current_player_id = None
     if game.phase != GamePhase.FINISHED and active_ids:
@@ -99,6 +102,7 @@ def game_public_state(game: CatanGame) -> dict[str, Any]:
                     else player.visible_victory_points()
                 ),
                 "played_knights": player.played_knights,
+                "longest_road_length": longest_road_lengths[player.id],
                 "has_longest_road": player.has_longest_road,
                 "has_largest_army": player.has_largest_army,
             }

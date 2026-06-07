@@ -7,6 +7,9 @@
 
 import "./css/board.css";
 
+import { bindGlobalButtonSounds, preloadSounds } from "./audio/sounds";
+import { translatePage } from "./i18n";
+import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
 import { LobbyApiError, apiGetRoom } from "./net/lobbyApi";
 import { connectWebSocket } from "./net/ws";
@@ -16,8 +19,10 @@ import {
   renderActionButtons,
 } from "./ui/actions";
 import { registerActionCallbacks } from "./ui/commands";
+import { bindCostsDialog } from "./ui/dialogs/costs";
 import { bindDiscardDialog } from "./ui/dialogs/discard";
 import { bindInfoDialog } from "./ui/dialogs/info";
+import { bindRulesDialog } from "./ui/dialogs/rules";
 import { bindVictimDialog } from "./ui/dialogs/victim";
 import { bindFpsCounter } from "./ui/fpsCounter";
 import { bindGameOverDialog } from "./ui/gameOver";
@@ -40,6 +45,7 @@ import {
   checkPendingModals,
   registerPendingCallbacks,
 } from "./ui/pendingModals";
+import { bindRankingDrawer } from "./ui/rankingDrawer";
 import { bindSidebar } from "./ui/sidebar";
 import { showToast } from "./ui/toast";
 import { updateUI } from "./ui/updateUI";
@@ -53,7 +59,10 @@ import type { PlayerColor } from "./types";
 registerStateCallbacks({
   rebuildScene,
   updateUI,
-  checkPendingModals,
+  checkPendingModals: () => {
+    checkPendingModals();
+    scheduleRandomBotTurn();
+  },
 });
 registerActionCallbacks({
   rebuildScene,
@@ -67,6 +76,7 @@ registerPendingCallbacks({
 
 // ---- Static DOM bindings (sidebar, dialog buttons, canvas listeners).
 bindSidebar();
+bindRankingDrawer();
 bindMainMenu();
 bindMockGameButton();
 bindSinglePlayer();
@@ -75,17 +85,22 @@ bindGameLobby();
 bindCreateRoom();
 bindJoinRoom();
 bindSettings();
+bindCostsDialog();
 bindDiscardDialog();
 bindInfoDialog();
+bindRulesDialog();
 bindVictimDialog();
 bindFpsCounter();
 bindGameOverDialog();
+bindGlobalButtonSounds();
+preloadSounds();
 installInputListeners();
 installResizeHandler();
 
 // Apply saved settings (shadow quality, FPS visibility, etc) before the
 // first frame renders.
 bootstrapSettings();
+translatePage();
 
 // ---- Boot sequence ----
 async function init(): Promise<void> {
