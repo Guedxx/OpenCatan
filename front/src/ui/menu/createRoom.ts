@@ -7,6 +7,7 @@
 //                         players are ready.
 
 import { API_BASE, PLAYER_COLORS } from "../../config";
+import { translatePage } from "../../i18n";
 import type { RoomState } from "../../net/lobbyApi";
 import {
   LobbyApiError,
@@ -101,6 +102,7 @@ function renderLobby(): void {
   startBtn.title = allReady
     ? ""
     : "Waiting for at least one more player (and everyone ready)";
+  translatePage($("screen-mp-lobby-host"));
 }
 
 function renderHostColorControl(room: RoomState): void {

@@ -1,6 +1,7 @@
 // Bottom-center resource bar showing the private hand + my VP.
 
 import { RESOURCE_COLORS, RESOURCE_LABELS, RESOURCE_ORDER } from "../config";
+import { t } from "../i18n";
 import { GameState, hasLegalAction } from "../state";
 import { $ } from "./dom";
 import {
@@ -74,10 +75,10 @@ export function renderResourceBar(): void {
     card.className =
       "w-20 min-w-20 h-24 rounded border-2 border-black/70 shadow flex flex-col justify-between p-2 text-white";
     card.style.background = color;
-    card.title = RESOURCE_LABELS[key];
+    card.title = t(RESOURCE_LABELS[key]);
     card.innerHTML =
       '<span class="text-[11px] font-bold uppercase leading-tight">' +
-      RESOURCE_LABELS[key] +
+      t(RESOURCE_LABELS[key]) +
       '</span><span class="text-3xl font-game text-right leading-none">' +
       count +
       "</span>";
@@ -106,12 +107,12 @@ export function renderResourceBar(): void {
     const card = document.createElement("div");
     card.className =
       "w-28 min-w-28 h-24 rounded border-2 border-yellow-700 bg-[#5d4037] shadow flex flex-col justify-between p-2 text-yellow-50";
-    card.title = DEVELOPMENT_HINTS[key];
+    card.title = t(DEVELOPMENT_HINTS[key]);
     card.innerHTML =
       '<div><div class="text-[11px] font-bold uppercase leading-tight text-yellow-300">' +
-      DEVELOPMENT_LABELS[key] +
+      t(DEVELOPMENT_LABELS[key]) +
       '</div><div class="text-[10px] text-yellow-100/80 leading-tight">' +
-      DEVELOPMENT_HINTS[key] +
+      t(DEVELOPMENT_HINTS[key]) +
       '</div></div><div class="flex items-end justify-between"><span class="text-2xl font-game leading-none">' +
       count +
       "</span></div>";
@@ -119,12 +120,12 @@ export function renderResourceBar(): void {
       const btn = document.createElement("button");
       btn.className =
         "btn-action px-2 py-1 rounded text-[11px] font-bold text-[#3e2723]";
-      btn.textContent = "Play";
+      btn.textContent = t("Play");
       btn.disabled = !canPlayDev || playableCount <= 0;
       btn.title =
         playableCount <= 0
-          ? "Cards bought this turn cannot be played"
-          : "Play " + DEVELOPMENT_LABELS[key];
+          ? t("Cards bought this turn cannot be played")
+          : `${t("Play")} ${t(DEVELOPMENT_LABELS[key])}`;
       btn.addEventListener("click", handler);
       card.querySelector("div:last-child")?.appendChild(btn);
     }
@@ -135,7 +136,7 @@ export function renderResourceBar(): void {
   vpCard.className =
     "w-20 min-w-20 h-24 rounded border-2 border-yellow-500 bg-black/70 shadow flex flex-col justify-between p-2 text-white";
   vpCard.innerHTML =
-    '<span class="text-[11px] font-bold uppercase text-yellow-300">Points</span>' +
+    `<span class="text-[11px] font-bold uppercase text-yellow-300">${t("Points")}</span>` +
     '<span class="text-3xl font-game text-right leading-none">' +
     vp +
     "</span>";

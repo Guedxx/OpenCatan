@@ -3,6 +3,7 @@
 
 import { startRandomBots } from "../../ai/randomBot";
 import { PLAYER_COLORS } from "../../config";
+import { translatePage } from "../../i18n";
 import { apiCreateGame } from "../../net/api";
 import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
@@ -100,6 +101,7 @@ function render(): void {
       render();
     });
   });
+  translatePage($("screen-sp-setup"));
 }
 
 function setBotCount(n: number): void {
