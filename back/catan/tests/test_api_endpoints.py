@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import time
+
+import pytest
 from fastapi.testclient import TestClient
 
+from catan.api.runtime import (
+    ABANDONED_GAME_IDLE_TIMEOUT_SECONDS,
+    FINISHED_GAME_RETENTION_SECONDS,
+)
 from catan.api.server import app, store
-from catan.domain.enums import ResourceType
+from catan.domain.enums import GamePhase, ResourceType
 
 
 def test_create_game_and_fetch_state() -> None:
@@ -294,3 +301,68 @@ def test_direct_game_creates_return_lobby() -> None:
         "Alice",
         "Bob",
     ]
+
+
+def test_abandoned_game_sessions_are_pruned() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/games",
+        json={
+            "players": [
+                {"name": "Alice", "color": "red"},
+                {"name": "Bob", "color": "blue"},
+            ]
+        },
+    ).json()
+    game_id = created["game_id"]
+
+    session = store.get(game_id)
+    session.last_activity = time.time() - ABANDONED_GAME_IDLE_TIMEOUT_SECONDS - 1
+    store.prune_stale()
+
+    with pytest.raises(KeyError):
+        store.get(game_id)
+
+
+def test_active_game_sessions_are_not_pruned() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/games",
+        json={
+            "players": [
+                {"name": "Alice", "color": "red"},
+                {"name": "Bob", "color": "blue"},
+            ]
+        },
+    ).json()
+    game_id = created["game_id"]
+
+    session = store.get(game_id)
+    session.last_activity = time.time() - ABANDONED_GAME_IDLE_TIMEOUT_SECONDS - 1
+    session.active_connections = 1
+    store.prune_stale()
+
+    assert store.get(game_id).game_id == game_id
+    session.active_connections = 0
+
+
+def test_finished_game_sessions_are_pruned_after_retention_window() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/games",
+        json={
+            "players": [
+                {"name": "Alice", "color": "red"},
+                {"name": "Bob", "color": "blue"},
+            ]
+        },
+    ).json()
+    game_id = created["game_id"]
+
+    session = store.get(game_id)
+    session.game.phase = GamePhase.FINISHED
+    session.last_activity = time.time() - FINISHED_GAME_RETENTION_SECONDS - 1
+    store.prune_stale()
+
+    with pytest.raises(KeyError):
+        store.get(game_id)

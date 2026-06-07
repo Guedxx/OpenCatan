@@ -6,6 +6,7 @@
 
 import "./css/board.css";
 
+import { bindGlobalButtonSounds, preloadSounds } from "./audio/sounds";
 import { translatePage } from "./i18n";
 import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
@@ -85,6 +86,8 @@ bindRulesDialog();
 bindVictimDialog();
 bindFpsCounter();
 bindGameOverDialog();
+bindGlobalButtonSounds();
+preloadSounds();
 installInputListeners();
 installResizeHandler();
 

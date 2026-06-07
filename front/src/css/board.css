@@ -218,6 +218,155 @@ body {
   font-weight: 700;
 }
 
+.emote-panel {
+  position: fixed;
+  left: 72px;
+  bottom: 118px;
+  z-index: 46;
+  width: 238px;
+  padding: 10px;
+  border: 2px solid #b8860b;
+  border-radius: 14px;
+  background: rgba(62, 39, 35, 0.96);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 202, 40, 0.18);
+}
+
+.emote-panel::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  bottom: 18px;
+  width: 16px;
+  height: 16px;
+  border-left: 2px solid #b8860b;
+  border-bottom: 2px solid #b8860b;
+  background: rgba(62, 39, 35, 0.96);
+  transform: rotate(45deg);
+}
+
+.emote-panel__title {
+  margin-bottom: 8px;
+  color: #ffca28;
+  font-family: "Fredoka One", cursive;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.emote-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.emote-choice {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #5d4037;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffecb3, #f9a825);
+  box-shadow: 0 4px 0 #5d4037;
+  color: #3e2723;
+  transition: transform 0.1s, box-shadow 0.1s, filter 0.12s;
+}
+
+.emote-choice:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.emote-choice:active {
+  box-shadow: 0 0 0 #5d4037;
+  transform: translateY(4px);
+}
+
+.emote-choice__emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.emote-choice__label {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.emote-bubble {
+  position: fixed;
+  top: 110px;
+  left: 50%;
+  z-index: 47;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.emote-bubble__card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+  padding: 12px 16px;
+  border: 3px solid #ffd54f;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(75, 46, 38, 0.98), rgba(38, 22, 18, 0.98));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48), 0 0 22px rgba(255, 213, 79, 0.35);
+}
+
+.emote-bubble__emoji {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  border: 2px solid #5d4037;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff8e1, #ffca28 58%, #f57f17);
+  font-size: 34px;
+  line-height: 50px;
+  text-align: center;
+}
+
+.emote-bubble__name {
+  color: #ffe0b2;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.emote-bubble__taunt {
+  color: #fff8e1;
+  font-family: "Fredoka One", cursive;
+  font-size: 24px;
+  line-height: 1.05;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.emote-bubble--pop {
+  animation: emote-pop 2400ms ease both;
+}
+
+@keyframes emote-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px) scale(0.72) rotate(-4deg);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1.1) rotate(2deg);
+  }
+  20%, 78% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scale(0.9) rotate(3deg);
+  }
+}
+
 .ranking-row__badge {
   grid-column: 3 / 5;
   justify-self: start;

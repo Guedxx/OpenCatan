@@ -5,16 +5,19 @@ import { doProposeTradeOffer } from "./commands";
 import { openCostsDialog } from "./dialogs/costs";
 import { openInfoDialog } from "./dialogs/info";
 import { openRulesDialog } from "./dialogs/rules";
-import { $ } from "./dom";
+import { $, $opt } from "./dom";
+import { bindEmotes, toggleEmotePanel } from "./emotes";
 import { toggleRankingDrawer } from "./rankingDrawer";
 import { openGameLobby } from "./menu/gameLobby";
 import { showScreen } from "./menu/nav";
 import { showToast } from "./toast";
 
 export function bindSidebar(): void {
-  $("sb-emotes").addEventListener("click", () =>
-    showToast("Emotes not implemented yet"),
+  $opt("sb-chat")?.addEventListener("click", () =>
+    showToast("Chat not implemented yet"),
   );
+  bindEmotes();
+  $("sb-emotes").addEventListener("click", () => toggleEmotePanel());
   $("sb-trade").addEventListener("click", doProposeTradeOffer);
   $("sb-costs").addEventListener("click", openCostsDialog);
   $("sb-stats").addEventListener("click", toggleRankingDrawer);

@@ -1,5 +1,6 @@
 // HTTP client for the backend REST API. Matches back/FRONTEND_CONTRACT.md.
 
+import { playCommandSound, playSound } from "../audio/sounds";
 import { API_BASE } from "../config";
 import { GameState, updateState } from "../state";
 import { showToast } from "../ui/toast";
@@ -79,6 +80,7 @@ export async function apiCommand(
     expectedVersion: GameState.version,
   });
   if (!data) return null;
+  playCommandSound(command, data);
   if (!data.accepted) {
     if (data.reason && data.reason.includes("Version mismatch")) {
       const freshState = await apiGetState(
@@ -118,16 +120,19 @@ export async function apiCommandForPlayer(options: {
       body: JSON.stringify(body),
     });
     if (res.status === 401) {
+      playSound("uiError");
       showToast("Invalid player token", "error");
       return null;
     }
     if (res.status === 404) {
+      playSound("uiError");
       showToast("Game not found", "error");
       return null;
     }
     return (await res.json()) as CommandResponse;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    playSound("uiError");
     showToast("Network error: " + msg, "error");
     return null;
   }
