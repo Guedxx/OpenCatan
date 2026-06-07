@@ -3,6 +3,7 @@
 // Handlers use addEventListener (no inline onclick strings) so the module
 // system stays clean.
 
+import { t } from "../i18n";
 import {
   GameState,
   hasLegalAction,
@@ -38,7 +39,7 @@ function button(
   btn.className =
     "btn-action px-4 py-2 rounded flex items-center space-x-2 font-bold text-[#3e2723] text-sm" +
     (active ? " active" : "");
-  btn.innerHTML = `<span>${icon}</span><span>${label}</span>`;
+  btn.innerHTML = `<span>${icon}</span><span>${t(label)}</span>`;
   return btn;
 }
 
@@ -49,7 +50,7 @@ function banner(text: string, tone: "green" | "red"): HTMLDivElement {
       ? "bg-green-800/80 text-white text-xs px-3 py-1 rounded border border-green-600"
       : "bg-red-800/80 text-white text-xs px-3 py-1 rounded border border-red-600";
   div.className = classes;
-  div.textContent = text;
+  div.textContent = t(text);
   return div;
 }
 
@@ -81,15 +82,15 @@ export function renderActionButtons(): void {
     }
   }
   if (GameState.interactionMode === "move_robber") {
-    el.appendChild(banner("🔴 Selecione um terreno para mover o Ladrão", "red"));
+    el.appendChild(banner("Choose a tile to move the robber", "red"));
   }
   if (GameState.interactionMode === "play_knight") {
-    el.appendChild(banner("🔴 Selecione um terreno para jogar o Cavaleiro", "red"));
+    el.appendChild(banner("Choose a tile to play the knight", "red"));
   }
   if (GameState.interactionMode === "play_road_building") {
     const picked = GameState.pendingRoadBuildingEdgeIds.length;
     el.appendChild(
-      banner(`Click road edge ${Math.min(picked + 1, 2)} of 2`, "green"),
+      banner(`${t("Click road edge")} ${Math.min(picked + 1, 2)} ${t("of 2")}`, "green"),
     );
   }
 
@@ -150,7 +151,7 @@ export function renderActionButtons(): void {
     const waiting = document.createElement("div");
     waiting.className =
       "bg-black/60 text-yellow-300 text-xs px-3 py-1.5 rounded border border-yellow-800";
-    waiting.textContent = "Waiting for " + (cp?.name ?? "...") + "...";
+    waiting.textContent = `${t("Waiting for")} ${cp?.name ?? "..."}...`;
     el.appendChild(waiting);
   }
 
@@ -164,7 +165,7 @@ export function renderActionButtons(): void {
     const win = document.createElement("div");
     win.className =
       "bg-yellow-700 text-white text-sm px-4 py-2 rounded-lg font-game border-2 border-yellow-400";
-    win.innerHTML = "&#127942; " + winner.name + " wins!";
+    win.innerHTML = "&#127942; " + winner.name + " " + t("wins!");
     el.appendChild(win);
   }
 }

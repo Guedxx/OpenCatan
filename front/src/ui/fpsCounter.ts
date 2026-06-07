@@ -1,5 +1,5 @@
 // Minimal FPS overlay. Updates every 500 ms from the animate loop.
-// Toggle with the `F` key; default visible so you can measure right away.
+// Visibility is controlled from Settings.
 
 const ELEMENT_ID = "fps-counter";
 const UPDATE_INTERVAL_MS = 500;
@@ -66,16 +66,7 @@ export function isFpsEnabled(): boolean {
   return state.enabled;
 }
 
-/** Bind the `F` keyboard shortcut + apply initial visibility. */
+/** Apply initial visibility. */
 export function bindFpsCounter(): void {
-  window.addEventListener("keydown", (event) => {
-    if (event.key !== "f" && event.key !== "F") return;
-    // Don't steal the keystroke while typing in an input/select.
-    const target = event.target as HTMLElement | null;
-    const tag = target?.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-    if (target?.isContentEditable) return;
-    toggleFps();
-  });
   applyVisibility();
 }

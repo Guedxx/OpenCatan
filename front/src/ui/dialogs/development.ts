@@ -1,4 +1,5 @@
 import { RESOURCE_COLORS, RESOURCE_LABELS, RESOURCE_ORDER } from "../../config";
+import { t, translatePage } from "../../i18n";
 import { apiCommand } from "../../net/api";
 import { GameState } from "../../state";
 import { showToast } from "../toast";
@@ -63,12 +64,13 @@ export function showDevelopmentResourceDialog(
     btn.className =
       "rounded border-2 border-black/60 px-3 py-2 text-left font-bold text-white shadow";
     btn.style.background = RESOURCE_COLORS[resource];
-    btn.textContent = RESOURCE_LABELS[resource];
+    btn.textContent = t(RESOURCE_LABELS[resource]);
     btn.addEventListener("click", () => chooseResource(resource));
     buttons.appendChild(btn);
   }
   renderSelection();
   dialog.classList.remove("hidden");
+  translatePage(dialog);
 }
 
 function chooseResource(resource: string): void {
@@ -91,8 +93,9 @@ function renderSelection(): void {
     selection.textContent =
       selectedResources.length === 0
         ? "Choose one resource to collect from all opponents."
-        : "Selected: " + RESOURCE_LABELS[selectedResources[0]];
+        : `${t("Selected:")} ${t(RESOURCE_LABELS[selectedResources[0]])}`;
     submit.disabled = selectedResources.length !== 1;
+    translatePage(dialog);
     return;
   }
 
@@ -100,8 +103,9 @@ function renderSelection(): void {
     selectedResources.length === 0
       ? "Choose two resources. You may choose the same resource twice."
       : "Selected: " +
-        selectedResources.map((r) => RESOURCE_LABELS[r]).join(", ");
+        selectedResources.map((r) => t(RESOURCE_LABELS[r])).join(", ");
   submit.disabled = selectedResources.length !== 2;
+  translatePage(dialog);
 }
 
 async function submitDevelopmentResourceDialog(): Promise<void> {

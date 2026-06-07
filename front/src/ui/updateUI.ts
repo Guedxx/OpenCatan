@@ -1,7 +1,9 @@
 // Top-level UI aggregator called by state.updateState after each snapshot.
 
+import { translatePage } from "../i18n";
 import { renderActionButtons } from "./actions";
 import { renderDiceDisplay } from "./dice";
+import { syncCostsDialog } from "./dialogs/costs";
 import { syncInfoDialog } from "./dialogs/info";
 import { handleFinishedGame } from "./gameEnd";
 import { renderGameOverDialog } from "./gameOver";
@@ -19,7 +21,9 @@ export function updateUI(): void {
   renderGameStatus();
   renderDiceDisplay();
   renderRankingDrawer();
+  syncCostsDialog();
   syncInfoDialog();
   renderGameOverDialog();
   renderGameLobby();
+  translatePage();
 }
