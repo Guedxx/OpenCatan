@@ -4,6 +4,8 @@ import type { GraphicsPreset, ShadowQuality } from "./settings.types";
 
 const STORAGE_KEY = "opencatan.settings";
 const ACTIVE_ROOM_KEY = "opencatan.activeRoom";
+const ACTIVE_GAME_KEY = "opencatan.activeGame";
+const RECENTLY_LEFT_GAME_KEY = "opencatan.recentlyLeftGame";
 
 export interface MenuSettings {
   shadowQuality: ShadowQuality;
@@ -85,6 +87,85 @@ export function saveActiveRoom(entry: ActiveRoom): void {
 export function clearActiveRoom(): void {
   try {
     localStorage.removeItem(ACTIVE_ROOM_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// ---- Active game (survives reloads so the current match can be restored) ----
+
+export interface ActiveGame {
+  game_id: string;
+  player_token: string;
+}
+
+export function loadActiveGame(): ActiveGame | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_GAME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ActiveGame;
+    if (!parsed.game_id || !parsed.player_token) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveGame(entry: ActiveGame): void {
+  try {
+    localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify(entry));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearActiveGame(): void {
+  try {
+    localStorage.removeItem(ACTIVE_GAME_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// ---- Recently left game (allows player to rejoin from main menu) ----
+
+export interface RecentlyLeftGame {
+  game_id: string;
+  player_token: string;
+  leftAt: number; // timestamp in ms
+}
+
+export function loadRecentlyLeftGame(): RecentlyLeftGame | null {
+  try {
+    const raw = localStorage.getItem(RECENTLY_LEFT_GAME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RecentlyLeftGame;
+    if (!parsed.game_id || !parsed.player_token || !parsed.leftAt) return null;
+    // Allow rejoin for up to 5 minutes after leaving
+    if (Date.now() - parsed.leftAt > 5 * 60 * 1000) {
+      clearRecentlyLeftGame();
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveRecentlyLeftGame(entry: Omit<RecentlyLeftGame, "leftAt">): void {
+  try {
+    localStorage.setItem(
+      RECENTLY_LEFT_GAME_KEY,
+      JSON.stringify({ ...entry, leftAt: Date.now() }),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function clearRecentlyLeftGame(): void {
+  try {
+    localStorage.removeItem(RECENTLY_LEFT_GAME_KEY);
   } catch {
     // ignore
   }

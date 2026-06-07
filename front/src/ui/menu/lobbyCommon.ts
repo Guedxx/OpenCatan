@@ -10,7 +10,7 @@ import { connectWebSocket } from "../../net/ws";
 import { GameState, updateState } from "../../state";
 import type { PlayerColor } from "../../types";
 import { closeMenu } from "./nav";
-import { clearActiveRoom } from "./storage";
+import { clearActiveRoom, saveActiveGame } from "./storage";
 
 export type RoomWsUpdate = (room: RoomState) => void;
 
@@ -54,6 +54,11 @@ export async function enterGame(
 ): Promise<void> {
   GameState.gameId = gameId;
   GameState.playerToken = gameToken;
+  saveActiveGame({
+    game_id: gameId,
+    player_token: gameToken,
+  });
+  console.log(`[enterGame] Cached game session: ${gameId}`);
 
   const url = new URL(window.location.href);
   url.searchParams.set("game_id", gameId);

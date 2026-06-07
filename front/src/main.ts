@@ -1,6 +1,7 @@
 // Bootstrap: wire runtime-registered callbacks, bind static DOM handlers,
 // install Three.js input listeners, kick off animate(), and:
 //   - auto-join if the URL carries `?game_id=...&player_token=...`
+//   - otherwise try to rejoin the last active game (from localStorage)
 //   - otherwise try to rejoin an active room (from localStorage)
 //   - otherwise show the main menu.
 
@@ -29,7 +30,12 @@ import { bindGameLobby } from "./ui/menu/gameLobby";
 import { bootstrapSettings, bindSettings } from "./ui/menu/settings";
 import { bindSinglePlayer } from "./ui/menu/singleplayer";
 import { closeMenu, showScreen } from "./ui/menu/nav";
-import { clearActiveRoom, loadActiveRoom } from "./ui/menu/storage";
+import {
+  clearActiveGame,
+  clearActiveRoom,
+  loadActiveGame,
+  loadActiveRoom,
+} from "./ui/menu/storage";
 import {
   checkPendingModals,
   registerPendingCallbacks,
@@ -101,11 +107,42 @@ async function init(): Promise<void> {
     } else {
       showScreen("main");
       showToast("Could not load game, create a new one", "error");
+      clearActiveGame();
     }
     return;
   }
 
-  // 2. Rejoin an active lobby via localStorage (survives F5 / HMR).
+  // 2. Rejoin the last active game via localStorage.
+  const activeGame = loadActiveGame();
+  if (activeGame) {
+    console.log(`[bootstrap] Found cached game: ${activeGame.game_id}`);
+    try {
+      GameState.gameId = activeGame.game_id;
+      GameState.playerToken = activeGame.player_token;
+      closeMenu();
+      const state = await apiGetState(activeGame.game_id, activeGame.player_token);
+      if (state) {
+        console.log(`[bootstrap] Successfully restored game ${activeGame.game_id}`);
+        updateState(state);
+        connectWebSocket(activeGame.game_id);
+        // The match cache is authoritative for the current game; the
+        // lobby cache should not keep pointing at a stale room.
+        clearActiveRoom();
+      } else {
+        console.warn(`[bootstrap] Game state is null for ${activeGame.game_id}`);
+        showScreen("main");
+        showToast("Could not restore your match (game not found), create a new one", "error");
+        clearActiveGame();
+      }
+      return;
+    } catch (err) {
+      console.error(`[bootstrap] Failed to restore cached game:`, err);
+      showToast(`Could not restore your match: ${err instanceof Error ? err.message : 'Unknown error'}`, "error");
+      clearActiveGame();
+    }
+  }
+
+  // 3. Rejoin an active lobby via localStorage (survives F5 / HMR).
   const active = loadActiveRoom();
   if (active) {
     try {
@@ -162,7 +199,7 @@ async function init(): Promise<void> {
     }
   }
 
-  // 3. Default: show the main menu.
+  // 4. Default: show the main menu.
   showScreen("main");
 }
 

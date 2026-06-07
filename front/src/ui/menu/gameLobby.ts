@@ -4,7 +4,8 @@ import { GameState } from "../../state";
 import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
 import { showToast } from "../toast";
-import { closeMenu, currentScreen, showScreen } from "./nav";
+import { closeMenu, currentScreen, openMainMenu, showScreen } from "./nav";
+import { saveRecentlyLeftGame } from "./storage";
 
 function escapeHtml(value: string): string {
   return value
@@ -33,17 +34,15 @@ export function renderGameLobby(): void {
     return;
   }
 
-  const players = GameState.publicState.players;
+  const allPlayers = GameState.publicState.players;
+  const activePlayers = allPlayers.filter((p) => p.is_active);
   const meId = GameState.myPlayerId;
 
-  container.innerHTML = players
+  container.innerHTML = activePlayers
     .map((p) => {
       const color = p.color as PlayerColor;
       const colorHex = PLAYER_COLORS[color] ?? "#888";
       const isMe = p.id === meId;
-      const statusLabel = p.is_active
-        ? '<span class="text-green-400 text-xs font-bold">ACTIVE</span>'
-        : '<span class="text-red-400 text-xs font-bold">LEFT</span>';
       const hostLabel = p.is_host
         ? ' <span class="text-yellow-400 text-xs">(host)</span>'
         : "";
@@ -54,7 +53,6 @@ export function renderGameLobby(): void {
         '<div class="flex items-center space-x-2 px-3 py-2 rounded bg-[#5d4037] border border-yellow-800">' +
         `<span class="w-6 h-6 rounded-sm border border-black" style="background:${colorHex}"></span>` +
         `<span class="text-white font-bold flex-1">${escapeHtml(p.name)}${hostLabel}${youLabel}</span>` +
-        statusLabel +
         "</div>"
       );
     })
@@ -80,7 +78,17 @@ async function leaveMatch(): Promise<void> {
   if (!res) return;
   if (!res.accepted) return;
   showToast("You left the match", "info");
-  renderGameLobby();
+  
+  // Save the recently left game so player can return from main menu
+  if (GameState.gameId && GameState.playerToken) {
+    saveRecentlyLeftGame({
+      game_id: GameState.gameId,
+      player_token: GameState.playerToken,
+    });
+  }
+  
+  // Go to main menu instead of staying in game lobby
+  openMainMenu();
 }
 
 async function rejoinMatch(): Promise<void> {

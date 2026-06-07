@@ -6,7 +6,19 @@ import { openInfoDialog } from "./dialogs/info";
 import { $ } from "./dom";
 import { toggleFps } from "./fpsCounter";
 import { openGameLobby } from "./menu/gameLobby";
+import { closeMenu, currentScreen } from "./menu/nav";
 import { showToast } from "./toast";
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    target.isContentEditable
+  );
+}
 
 export function bindSidebar(): void {
   $("sb-chat").addEventListener("click", () =>
@@ -30,4 +42,20 @@ export function bindSidebar(): void {
     showToast("Settings not implemented yet"),
   );
   $("sb-fps").addEventListener("click", toggleFps);
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (isTypingTarget(event.target)) return;
+    event.preventDefault();
+
+    const screen = currentScreen();
+    if (screen === "none") {
+      // Game is visible, open lobby
+      openGameLobby();
+    } else if (screen === "game-lobby") {
+      // Lobby is visible, close it
+      closeMenu();
+    }
+    // Ignore Esc if any other menu screen is open
+  });
 }
