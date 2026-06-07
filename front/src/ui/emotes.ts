@@ -88,6 +88,25 @@ function speakTaunt(text: string): void {
   }
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "'":
+        return "&#39;";
+      case '"':
+        return "&quot;";
+      default:
+        return char;
+    }
+  });
+}
+
 function showEmote(emote: EmoteDef, name: string): void {
   playSound(emote.sound);
   if (emote.speak) speakTaunt(emote.speak);
@@ -97,7 +116,7 @@ function showEmote(emote: EmoteDef, name: string): void {
     <div class="emote-bubble__card">
       <div class="emote-bubble__emoji">${emote.emoji}</div>
       <div>
-        <div class="emote-bubble__name">${name}</div>
+        <div class="emote-bubble__name">${escapeHtml(name)}</div>
         <div class="emote-bubble__taunt">${emote.taunt}</div>
       </div>
     </div>
