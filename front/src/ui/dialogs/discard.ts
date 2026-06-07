@@ -1,6 +1,7 @@
 // "Discard" dialog shown when a 7 is rolled and the player holds >7 cards.
 
 import { RESOURCE_COLORS, RESOURCE_LABELS, RESOURCE_ORDER } from "../../config";
+import { t, translatePage } from "../../i18n";
 import { apiCommand } from "../../net/api";
 import { GameState } from "../../state";
 import { $ } from "../dom";
@@ -8,7 +9,7 @@ import { showToast } from "../toast";
 
 export function showDiscardDialog(requiredCount: number): void {
   const dialog = $("discard-dialog");
-  $("discard-info").textContent = `You must discard ${requiredCount} resource(s).`;
+  $("discard-info").textContent = `${t("You must discard")} ${requiredCount} ${t("resource(s).")}`;
   const res = GameState.privateState?.resources ?? {};
   let html = "";
   for (const key of RESOURCE_ORDER) {
@@ -21,7 +22,7 @@ export function showDiscardDialog(requiredCount: number): void {
       RESOURCE_COLORS[key] +
       '"></div>' +
       '<span class="text-white text-sm">' +
-      RESOURCE_LABELS[key] +
+      t(RESOURCE_LABELS[key]) +
       " (" +
       count +
       ")</span>" +
@@ -37,6 +38,7 @@ export function showDiscardDialog(requiredCount: number): void {
   $("discard-inputs").innerHTML = html;
   dialog.dataset.required = String(requiredCount);
   dialog.classList.remove("hidden");
+  translatePage(dialog);
 }
 
 export async function submitDiscard(): Promise<void> {
@@ -55,7 +57,7 @@ export async function submitDiscard(): Promise<void> {
   });
   if (total !== required) {
     showToast(
-      "Must discard exactly " + required + " (selected " + total + ")",
+      `${t("Must discard exactly")} ${required} (${t("selected")} ${total})`,
       "error",
     );
     return;

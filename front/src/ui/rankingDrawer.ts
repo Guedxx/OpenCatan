@@ -1,4 +1,5 @@
 import { PLAYER_COLORS, PLAYER_COLORS_DARK } from "../config";
+import { onLanguageChange, t, translatePage } from "../i18n";
 import { GameState } from "../state";
 import type { PlayerColor, PlayerPublic } from "../types";
 import { $ } from "./dom";
@@ -27,9 +28,9 @@ function ensureDrawer(): HTMLDivElement {
       <div class="ranking-drawer__header">
         <div>
           <div class="ranking-drawer__eyebrow">Ranking</div>
-          <h2 id="ranking-title" class="font-game ranking-drawer__title">Army & Road</h2>
+          <h2 id="ranking-title" class="font-game ranking-drawer__title">${t("Army & Road")}</h2>
         </div>
-        <button id="ranking-close" class="ranking-drawer__close" type="button" title="Close ranking" aria-label="Close ranking">&times;</button>
+        <button id="ranking-close" class="ranking-drawer__close" type="button" title="${t("Close ranking")}" aria-label="${t("Close ranking")}">&times;</button>
       </div>
       <div id="ranking-content" class="ranking-drawer__content"></div>
     </div>
@@ -70,14 +71,14 @@ function playerRow(
   const bg = PLAYER_COLORS[color] ?? color;
   const border = PLAYER_COLORS_DARK[color] ?? "#5d4037";
   const name = escapeHtml(player.name);
-  const me = player.id === GameState.myPlayerId ? " you" : "";
+  const me = player.id === GameState.myPlayerId ? ` ${t("you")}` : "";
 
   return `
     <div class="ranking-row" style="border-color:${border}">
       <div class="ranking-row__rank">${rank}</div>
       <div class="ranking-row__swatch" style="background:${bg};border-color:${border}"></div>
       <div class="ranking-row__name">${name}${me}</div>
-      <div class="ranking-row__metric">${metric}<span>${suffix}</span></div>
+      <div class="ranking-row__metric">${metric}<span>${t(suffix)}</span></div>
       ${badge ? `<div class="ranking-row__badge">${badge}</div>` : ""}
     </div>
   `;
@@ -94,9 +95,9 @@ function section(
     <section class="ranking-section">
       <div class="ranking-section__title">
         <img src="${imageSrc}" alt="${imageAlt}" width="50" height="50" />
-        <h3>${title}</h3>
+        <h3>${t(title)}</h3>
       </div>
-      <div class="ranking-section__rows">${rows || `<p>${emptyText}</p>`}</div>
+      <div class="ranking-section__rows">${rows || `<p>${t(emptyText)}</p>`}</div>
     </section>
   `;
 }
@@ -114,7 +115,7 @@ export function renderRankingDrawer(): void {
         index + 1,
         player.played_knights,
         " knights",
-        player.has_largest_army ? "Largest Army" : null,
+        player.has_largest_army ? t("Largest Army") : null,
       ),
     )
     .join("");
@@ -125,7 +126,7 @@ export function renderRankingDrawer(): void {
         index + 1,
         player.longest_road_length,
         " roads",
-        player.has_longest_road ? "Longest Road" : null,
+        player.has_longest_road ? t("Longest Road") : null,
       ),
     )
     .join("");
@@ -147,6 +148,7 @@ export function renderRankingDrawer(): void {
     );
   drawer.classList.toggle("is-open", isOpen);
   drawer.setAttribute("aria-hidden", String(!isOpen));
+  translatePage(drawer);
 }
 
 export function toggleRankingDrawer(): void {
@@ -161,6 +163,11 @@ export function closeRankingDrawer(): void {
 
 export function bindRankingDrawer(): void {
   ensureDrawer();
-  $("sb-stats").setAttribute("title", "Open ranking");
-  $("sb-stats").setAttribute("aria-label", "Open ranking");
+  $("sb-stats").setAttribute("title", t("Open ranking"));
+  $("sb-stats").setAttribute("aria-label", t("Open ranking"));
+  onLanguageChange(() => {
+    const existing = document.getElementById("ranking-drawer");
+    existing?.remove();
+    renderRankingDrawer();
+  });
 }

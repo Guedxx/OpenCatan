@@ -9,6 +9,7 @@
 //                       into the actual game via WS `game_started`.
 
 import { API_BASE, PLAYER_COLORS } from "../../config";
+import { translatePage } from "../../i18n";
 import type { RoomState } from "../../net/lobbyApi";
 import {
   LobbyApiError,
@@ -111,6 +112,7 @@ function renderLobby(): void {
   const isReady = me?.ready === true;
   readyBtn.textContent = isReady ? "Unready" : "Ready";
   readyBtn.classList.toggle("active", isReady);
+  translatePage($("screen-mp-lobby-guest"));
 }
 
 function renderGuestColorControl(room: RoomState): void {

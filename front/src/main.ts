@@ -6,6 +6,7 @@
 
 import "./css/board.css";
 
+import { translatePage } from "./i18n";
 import { scheduleRandomBotTurn } from "./ai/randomBot";
 import { apiGetState } from "./net/api";
 import { LobbyApiError, apiGetRoom } from "./net/lobbyApi";
@@ -16,8 +17,10 @@ import {
   renderActionButtons,
 } from "./ui/actions";
 import { registerActionCallbacks } from "./ui/commands";
+import { bindCostsDialog } from "./ui/dialogs/costs";
 import { bindDiscardDialog } from "./ui/dialogs/discard";
 import { bindInfoDialog } from "./ui/dialogs/info";
+import { bindRulesDialog } from "./ui/dialogs/rules";
 import { bindVictimDialog } from "./ui/dialogs/victim";
 import { bindFpsCounter } from "./ui/fpsCounter";
 import { bindGameOverDialog } from "./ui/gameOver";
@@ -75,8 +78,10 @@ bindGameLobby();
 bindCreateRoom();
 bindJoinRoom();
 bindSettings();
+bindCostsDialog();
 bindDiscardDialog();
 bindInfoDialog();
+bindRulesDialog();
 bindVictimDialog();
 bindFpsCounter();
 bindGameOverDialog();
@@ -86,6 +91,7 @@ installResizeHandler();
 // Apply saved settings (shadow quality, FPS visibility, etc) before the
 // first frame renders.
 bootstrapSettings();
+translatePage();
 
 // ---- Boot sequence ----
 async function init(): Promise<void> {
