@@ -22,6 +22,8 @@ class CommandType(str, Enum):
     RESPOND_TRADE_OFFER = "respond_trade_offer"
     CANCEL_TRADE_OFFER = "cancel_trade_offer"
     END_TURN = "end_turn"
+    LEAVE_GAME = "leave_game"
+    REJOIN_GAME = "rejoin_game"
 
 
 class CreatePlayerRequest(BaseModel):
@@ -130,6 +132,15 @@ class RoomMembershipResponse(BaseModel):
 
 class RoomStateResponse(BaseModel):
     room: RoomState
+
+
+class ReturnToLobbyRequest(BaseModel):
+    player_token: str = Field(min_length=1)
+
+
+class ReturnToLobbyResponse(BaseModel):
+    room: RoomState
+    player_token: str
 
 
 class StartGameResponse(BaseModel):

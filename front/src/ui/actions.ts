@@ -81,7 +81,16 @@ export function renderActionButtons(): void {
     }
   }
   if (GameState.interactionMode === "move_robber") {
-    el.appendChild(banner("Click a tile to move the robber", "red"));
+    el.appendChild(banner("🔴 Selecione um terreno para mover o Ladrão", "red"));
+  }
+  if (GameState.interactionMode === "play_knight") {
+    el.appendChild(banner("🔴 Selecione um terreno para jogar o Cavaleiro", "red"));
+  }
+  if (GameState.interactionMode === "play_road_building") {
+    const picked = GameState.pendingRoadBuildingEdgeIds.length;
+    el.appendChild(
+      banner(`Click road edge ${Math.min(picked + 1, 2)} of 2`, "green"),
+    );
   }
   if (GameState.interactionMode === "play_knight") {
     el.appendChild(banner("Click a tile for the knight", "green"));
@@ -156,7 +165,9 @@ export function renderActionButtons(): void {
 
   // Finished
   if (phase === "FINISHED") {
-    const winner = GameState.publicState.players.reduce((a, b) =>
+    const active = GameState.publicState.players.filter((p) => p.is_active);
+    const pool = active.length > 0 ? active : GameState.publicState.players;
+    const winner = pool.reduce((a, b) =>
       a.victory_points > b.victory_points ? a : b,
     );
     const win = document.createElement("div");
