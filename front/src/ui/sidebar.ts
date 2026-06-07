@@ -16,17 +16,8 @@ export function bindSidebar(): void {
   $("sb-emotes").addEventListener("click", () =>
     showToast("Emotes not implemented yet"),
   );
-  $("sb-trade").addEventListener("click", () => {
-    void doProposeTradeOffer();
-  });
-  $("sb-stats").addEventListener("click", toggleRankingDrawer);
-  $("sb-info").addEventListener("click", () =>
-    showToast("Info not implemented yet"),
-  );
   $("sb-trade").addEventListener("click", doProposeTradeOffer);
-  $("sb-stats").addEventListener("click", () =>
-    showToast("Stats not implemented yet"),
-  );
+  $("sb-stats").addEventListener("click", toggleRankingDrawer);
   $("sb-info").addEventListener("click", openInfoDialog);
   $("sb-rules").addEventListener("click", () =>
     showToast("Rules not implemented yet"),
