@@ -1,12 +1,14 @@
-import { apiCommand } from "../../net/api";
 import { PLAYER_COLORS } from "../../config";
 import { translatePage } from "../../i18n";
+import { apiCommand } from "../../net/api";
+import { disconnectWebSocket } from "../../net/ws";
 import { GameState } from "../../state";
 import type { PlayerColor } from "../../types";
 import { $ } from "../dom";
 import { showToast } from "../toast";
+import { clearGameUrl } from "../returnToLobby";
 import { closeMenu, currentScreen, openMainMenu, showScreen } from "./nav";
-import { saveRecentlyLeftGame } from "./storage";
+import { clearActiveGame, saveRecentlyLeftGame } from "./storage";
 
 function escapeHtml(value: string): string {
   return value
@@ -80,16 +82,22 @@ async function leaveMatch(): Promise<void> {
   if (!res) return;
   if (!res.accepted) return;
   showToast("You left the match", "info");
-  
-  // Save the recently left game so player can return from main menu
+
+  // Save the recently left game so player can return from main menu.
   if (GameState.gameId && GameState.playerToken) {
     saveRecentlyLeftGame({
       game_id: GameState.gameId,
       player_token: GameState.playerToken,
     });
   }
-  
-  // Go to main menu instead of staying in game lobby
+
+  clearActiveGame();
+  disconnectWebSocket();
+  clearGameUrl();
+  GameState.gameId = null;
+  GameState.playerToken = null;
+
+  // Go to main menu instead of staying in game lobby.
   openMainMenu();
 }
 
