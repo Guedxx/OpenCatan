@@ -24,6 +24,8 @@ env/
 .coverage
 .coverage.*
 htmlcov/
+front/playwright-report/
+front/test-results/
 
 # Build artifacts
 build/
