@@ -99,7 +99,6 @@ def coloured_resource_layout() -> list[ResourceType]:
             while u < tam:
                 print(f"u{u} -- {resultant_layout[neighbour_list[u]]} -- {random_type}")
                 if resultant_layout[neighbour_list[u]] == random_type:
-                    print("DEU MERDA")
                     #Returns to the beginning of the list if chosen color matches a neighbour color and tries another one
                     random_type = random.choice(raw_layout)
                     u = 0
