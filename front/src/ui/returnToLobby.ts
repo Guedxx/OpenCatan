@@ -4,7 +4,7 @@ import { GameState } from "../state";
 import type { PlayerColor } from "../types";
 import { resumeAsHost } from "./menu/createRoom";
 import { resumeAsGuest } from "./menu/joinRoom";
-import { saveActiveRoom } from "./menu/storage";
+import { clearActiveGame, clearRecentlyLeftGame, saveActiveRoom } from "./menu/storage";
 import { showToast } from "./toast";
 
 export function clearGameUrl(): void {
@@ -60,6 +60,9 @@ export async function returnToLobbyFromGame(
       name: me.name,
       color: me.color,
     });
+    clearActiveGame();
+    clearRecentlyLeftGame();
+    console.log(`[returnToLobby] Returning to lobby, game cache cleared`);
 
     disconnectWebSocket();
     clearGameUrl();

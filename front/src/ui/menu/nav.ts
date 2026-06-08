@@ -32,9 +32,14 @@ const PANEL_IDS: Record<Exclude<Screen, "none">, string> = {
 };
 
 let current: Screen = "main";
+let renderMainMenuFn: (() => void) | null = null;
 
 export function currentScreen(): Screen {
   return current;
+}
+
+export function registerMainMenuRenderer(fn: () => void): void {
+  renderMainMenuFn = fn;
 }
 
 export function showScreen(next: Screen): void {
@@ -62,4 +67,5 @@ export function closeMenu(): void {
 /** Opens the main menu, e.g. after a user leaves a lobby. */
 export function openMainMenu(): void {
   showScreen("main");
+  renderMainMenuFn?.();
 }

@@ -215,10 +215,45 @@ function attachWs(): void {
 
 function copyRoomCode(): void {
   if (!state.roomId) return;
-  void navigator.clipboard
-    .writeText(state.roomId)
-    .then(() => showToast("Room code copied!", "success"))
-    .catch(() => showToast("Couldn't copy to clipboard", "error"));
+
+  // Try modern clipboard API first
+  if (navigator.clipboard?.writeText) {
+    void navigator.clipboard
+      .writeText(state.roomId)
+      .then(() => showToast("Room code copied!", "success"))
+      .catch(() => {
+        // If modern API fails, try fallback
+        copyRoomCodeFallback();
+      });
+  } else {
+    // Fallback for browsers without clipboard API
+    copyRoomCodeFallback();
+  }
+}
+
+function copyRoomCodeFallback(): void {
+  if (!state.roomId) return;
+
+  // Create temporary textarea element
+  const textarea = document.createElement("textarea");
+  textarea.value = state.roomId;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+
+  try {
+    textarea.select();
+    const success = document.execCommand("copy");
+    if (success) {
+      showToast("Room code copied!", "success");
+    } else {
+      showToast("Couldn't copy to clipboard", "error");
+    }
+  } catch {
+    showToast("Couldn't copy to clipboard", "error");
+  } finally {
+    document.body.removeChild(textarea);
+  }
 }
 
 async function startGameClick(): Promise<void> {
