@@ -7,6 +7,7 @@ from catan.domain.enums import PortType, ResourceType
 from catan.topology.layouts import (
     shuffled_port_layout,
     shuffled_resource_layout,
+    coloured_resource_layout,
     shuffled_token_layout,
 )
 
@@ -22,7 +23,7 @@ class BoardFactory:
         board = Board()
         board.build_standard_topology()
         board.assign_tiles(
-            resource_layout=resource_layout or shuffled_resource_layout(rng),
+            resource_layout=resource_layout or coloured_resource_layout(),
             token_layout=token_layout or shuffled_token_layout(rng),
         )
         board.assign_ports(port_layout=port_layout or shuffled_port_layout(rng))
